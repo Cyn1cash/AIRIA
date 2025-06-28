@@ -6,6 +6,7 @@ namespace Config {
     constexpr char SSID[] = "Thaddeus’s iPhone";
     constexpr char PASSWORD[] = "tkkr.dev";
     constexpr int WIFI_TIMEOUT_MS = 15'000;
+    constexpr int WIFI_RETRY_DELAY_MS = 5'000;
 
     /* Time / NTP ------------------------------------------------- */
     constexpr long GMT_OFFSET_SEC = 8 * 3600; // UTC+8

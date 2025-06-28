@@ -8,6 +8,7 @@ public:
     explicit WiFiHelper(DisplayManager &disp) : _disp(disp) {}
 
     void begin() {
+        _retryCount = 1;
         connect();
     }
 
@@ -16,14 +17,16 @@ public:
             if (_everConnected) {
                 _everConnected = false;
                 _disp.begin();
+                _retryCount = 1;
                 connect();
-            } else if (!_connecting) {
+            } else if (!_connecting && millis() - _lastAttempt >= Config::WIFI_RETRY_DELAY_MS) {
                 connect();
             }
             return false;
         }
         if (!_everConnected) {
             _everConnected = true;
+            _retryCount = 1;
             return true;
         }
         return false;
@@ -32,10 +35,11 @@ public:
 private:
     void connect() {
         _connecting = true;
+        _lastAttempt = millis();
+        _disp.showWifiConnecting(_retryCount);
 
         WiFi.mode(WIFI_STA);
         WiFi.begin(Config::SSID, Config::PASSWORD);
-        _disp.showWifiConnecting();
 
         const uint32_t t0 = millis();
         while (WiFi.status() != WL_CONNECTED && millis() - t0 < Config::WIFI_TIMEOUT_MS) {
@@ -46,11 +50,13 @@ private:
         if (WiFi.status() == WL_CONNECTED) {
             _disp.showWifiConnected(WiFi.SSID().c_str(), WiFi.localIP());
         } else {
-            ESP.restart();
+            ++_retryCount;
         }
     }
 
     DisplayManager &_disp;
     bool _everConnected = false;
     bool _connecting = false;
+    uint16_t _retryCount = 1;
+    uint32_t _lastAttempt = 0;
 };

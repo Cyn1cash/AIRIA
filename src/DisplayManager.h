@@ -12,9 +12,11 @@ public:
         hide("timeSync");
     }
 
-    void showWifiConnecting() {
+    void showWifiConnecting(uint16_t attempt = 0) {
         show("wifiConn");
-        sendCmd("start.wifiConn.txt=\"Waiting for Wi-Fi connection...\"");
+        String msg = "Waiting for Wi-Fi connection...";
+        if (attempt) msg += " [" + String(attempt) + "]";
+        sendCmd((String("start.wifiConn.txt=\"") + msg + "\"").c_str());
     }
     void showWifiConnected(const char *ssid, const IPAddress &ip) {
         show("wifiConn");
