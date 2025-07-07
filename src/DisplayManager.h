@@ -45,8 +45,8 @@ public:
 
     /* -------- Details page --------- */
     void showLocation(double lat, double lon) {
-        sendCmd((String("details.latitude.txt=\"Latitude: ") + String(lat, 4) + "\"").c_str());
-        sendCmd((String("details.longitude.txt=\"Longitude: ") + String(lon, 4) + "\"").c_str());
+        sendCmd((String("details.latitude.txt=\"Latitude: ") + String(lat, 15) + "\"").c_str());
+        sendCmd((String("details.longitude.txt=\"Longitude: ") + String(lon, 15) + "\"").c_str());
     }
 
 private:

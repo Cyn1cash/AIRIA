@@ -28,7 +28,7 @@ private:
         _lastFetch = millis();
 
         const String url =
-            String("http://api.open-meteo.com/v1/forecast?") + "latitude=" + String(Config::LATITUDE, 4) + "&longitude=" + String(Config::LONGITUDE, 4) + "&current_weather=true" + "&hourly=relative_humidity_2m" + "&timezone=Asia%2FSingapore";
+            String("http://api.open-meteo.com/v1/forecast?") + "latitude=" + String(Config::LATITUDE, 15) + "&longitude=" + String(Config::LONGITUDE, 15) + "&current_weather=true" + "&hourly=relative_humidity_2m" + "&timezone=Asia%2FSingapore";
 
         WiFiClient client;
         HTTPClient http;

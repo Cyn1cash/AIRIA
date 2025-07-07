@@ -16,7 +16,7 @@ namespace Config {
     constexpr uint32_t CLOCK_REFRESH_MS = 1'000; // update once per second
 
     /* Weather / Location ---------------------------------------- */
-    constexpr double LATITUDE = 1.2838617993247599; // Marina Bay Sands, Singapore
-    constexpr double LONGITUDE = 103.85922276445453;
+    constexpr double LATITUDE = 1.330591328881519; // Ngee Ann Polytechnic
+    constexpr double LONGITUDE = 103.77506363783029;
     constexpr uint32_t WEATHER_REFRESH_MS = 15'000; // (15 s for demo; make 15*60*1000 in prod)
 }
