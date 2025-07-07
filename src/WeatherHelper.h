@@ -19,6 +19,10 @@ public:
             fetch();
     }
 
+    float getCurrentTemp() const { return _currentTemp; }
+    float getCurrentHumidity() const { return _currentHumidity; }
+    int getCurrentWeatherCode() const { return _currentWeatherCode; }
+
 private:
     void fetch() {
         _lastFetch = millis();
@@ -57,6 +61,10 @@ private:
                     String(temp, 1) + "°C  " + String((int)rh) + "%  •  " + decodeWeather(wCode);
 
                 _disp.updateWeather(line);
+
+                _currentTemp = temp;
+                _currentHumidity = rh;
+                _currentWeatherCode = wCode;
             }
         }
         http.end();
@@ -82,4 +90,7 @@ private:
 
     DisplayManager &_disp;
     uint32_t _lastFetch = 0;
+    float _currentTemp = 0.0;
+    float _currentHumidity = 0.0;
+    int _currentWeatherCode = 0;
 };
