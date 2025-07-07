@@ -3,8 +3,8 @@
 
 namespace Config {
     /* Wi-Fi ------------------------------------------------------ */
-    constexpr char SSID[] = "Thaddeus’s iPhone";
-    constexpr char PASSWORD[] = "tkkr.dev";
+    constexpr char SSID[] = "Casy";
+    constexpr char PASSWORD[] = "Shikanokonoko";
     constexpr int WIFI_TIMEOUT_MS = 15'000;
     constexpr int WIFI_RETRY_DELAY_MS = 5'000;
 
