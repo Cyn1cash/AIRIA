@@ -21,7 +21,7 @@ public:
 
     float getCurrentTemp() const { return _currentTemp; }
     float getCurrentHumidity() const { return _currentHumidity; }
-    int getCurrentWeatherCode() const { return _currentWeatherCode; }
+    String getCurrentWeather() const { return _currentWeather; }
 
 private:
     void fetch() {
@@ -64,7 +64,7 @@ private:
 
                 _currentTemp = temp;
                 _currentHumidity = rh;
-                _currentWeatherCode = wCode;
+                _currentWeather = decodeWeather(wCode);
             }
         }
         http.end();
@@ -92,5 +92,5 @@ private:
     uint32_t _lastFetch = 0;
     float _currentTemp = 0.0;
     float _currentHumidity = 0.0;
-    int _currentWeatherCode = 0;
+    String _currentWeather = "";
 };
