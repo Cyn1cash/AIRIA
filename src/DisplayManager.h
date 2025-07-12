@@ -42,6 +42,12 @@ public:
     void updateWeather(const String &line) {
         sendCmd((String("main.weather.txt=\"") + line + "\"").c_str());
     }
+    void updateIndoorSensors(const String &line) {
+        sendCmd((String("main.indoorSensors.txt=\"") + line + "\"").c_str());
+    }
+    void updateEnergyEstimate(const String &line) {
+        sendCmd((String("main.energyEstimate.txt=\"") + line + "\"").c_str());
+    }
 
     /* -------- Details page --------- */
     void showLocation(double lat, double lon) {
