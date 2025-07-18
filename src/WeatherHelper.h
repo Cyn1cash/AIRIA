@@ -4,6 +4,16 @@
 #include <ArduinoJson.h>
 #include <ESP8266HTTPClient.h>
 #include <ESP8266WiFi.h>
+#include <WiFiClientSecure.h>
+#include <math.h>
+
+struct WeatherStation {
+    String id;
+    String name;
+    double latitude;
+    double longitude;
+    double distance;
+};
 
 class WeatherHelper {
 public:
@@ -21,120 +31,195 @@ public:
 
     float getCurrentTemp() const { return _currentTemp; }
     float getCurrentHumidity() const { return _currentHumidity; }
-    String getCurrentWeather() const { return _currentWeather; }
 
 private:
     void fetch() {
         _lastFetch = millis();
 
-        const String url =
-            String("http://api.open-meteo.com/v1/forecast?") + "latitude=" + String(Config::LATITUDE, 15) + "&longitude=" + String(Config::LONGITUDE, 15) + "&current_weather=true" + "&hourly=relative_humidity_2m" + "&timezone=Asia%2FSingapore";
+        // Fetch temperature data to get station list and find closest station
+        if (fetchTemperature()) {
+            // Then fetch humidity data using the same closest station
+            fetchHumidity();
 
-        WiFiClient client;
-        HTTPClient http;
-        if (!http.begin(client, url))
-            return;
+            // Update display with combined data
+            updateDisplay();
+        } else {
+            // If temperature fetch fails, set fallback display
+            updateDisplay();
+        }
+    }
 
-        if (http.GET() == HTTP_CODE_OK) {
-            DynamicJsonDocument doc(4096);
-            if (!deserializeJson(doc, http.getString())) {
-                /* -------- current temperature + weather code -------- */
-                float temp = doc["current_weather"]["temperature"]; // °C
-                int wCode = doc["current_weather"]["weathercode"];  // 0-99
-                const char *cTime = doc["current_weather"]["time"];
+    double calculateDistance(double lat1, double lon1, double lat2, double lon2) {
+        // Haversine formula for calculating distance between two points on Earth
+        const double R = 6371.0; // Earth's radius in kilometers
+        const double dlat = (lat2 - lat1) * M_PI / 180.0;
+        const double dlon = (lon2 - lon1) * M_PI / 180.0;
+        const double a = sin(dlat / 2) * sin(dlat / 2) +
+                         cos(lat1 * M_PI / 180.0) * cos(lat2 * M_PI / 180.0) *
+                             sin(dlon / 2) * sin(dlon / 2);
+        const double c = 2 * atan2(sqrt(a), sqrt(1 - a));
+        return R * c;
+    }
 
-                /* -------- find matching RH in the hourly arrays ----- */
-                float rh = NAN;
-                JsonArray times = doc["hourly"]["time"];
-                JsonArray hums = doc["hourly"]["relative_humidity_2m"];
-                for (size_t i = 0; i < times.size() && i < hums.size(); ++i) {
-                    if (strcmp(times[i], cTime) == 0) {
-                        rh = hums[i];
-                        break;
-                    }
-                }
-                if (isnan(rh) && hums.size())
-                    rh = hums[0]; // fallback
+    String findClosestStation(const JsonArray &stations) {
+        String closestStationId = "";
+        double minDistance = 999999.0;
 
-                /* ---------------- push to the display --------------- */
-                String line =
-                    String(temp, 1) + "°C  " + String((int)rh) + "%  •  " + decodeWeather(wCode);
+        for (JsonVariant station : stations) {
+            // NEA APIs sometimes use "location" and sometimes "labelLocation"
+            double stationLat, stationLon;
 
-                _disp.updateWeather(line);
+            if (station["labelLocation"]) {
+                stationLat = station["labelLocation"]["latitude"];
+                stationLon = station["labelLocation"]["longitude"];
+            } else if (station["location"]) {
+                stationLat = station["location"]["latitude"];
+                stationLon = station["location"]["longitude"];
+            } else {
+                continue; // Skip if no location data
+            }
 
-                _currentTemp = temp;
-                _currentHumidity = rh;
-                _currentWeather = decodeWeather(wCode);
+            double distance = calculateDistance(Config::LATITUDE, Config::LONGITUDE,
+                                                stationLat, stationLon);
+
+            if (distance < minDistance) {
+                minDistance = distance;
+                closestStationId = station["id"].as<String>();
+                _closestStationName = station["name"].as<String>();
+                _closestStationDistance = distance;
             }
         }
-        http.end();
+
+        return closestStationId;
     }
 
-    const char *decodeWeather(int code) {
-        switch (code) {
-        case 0:
-            return "Clear sky";
-        case 1:
-            return "Mainly clear";
-        case 2:
-            return "Partly cloudy";
-        case 3:
-            return "Overcast";
-        case 45:
-            return "Fog";
-        case 48:
-            return "Depositing rime fog";
-        case 51:
-            return "Drizzle: Light";
-        case 53:
-            return "Drizzle: Moderate";
-        case 55:
-            return "Drizzle: Dense";
-        case 56:
-            return "Freezing Drizzle: Light";
-        case 57:
-            return "Freezing Drizzle: Dense";
-        case 61:
-            return "Rain: Slight";
-        case 63:
-            return "Rain: Moderate";
-        case 65:
-            return "Rain: Heavy";
-        case 66:
-            return "Freezing Rain: Light";
-        case 67:
-            return "Freezing Rain: Heavy";
-        case 71:
-            return "Snowfall: Slight";
-        case 73:
-            return "Snowfall: Moderate";
-        case 75:
-            return "Snowfall: Heavy";
-        case 77:
-            return "Snow grains";
-        case 80:
-            return "Rain showers: Slight";
-        case 81:
-            return "Rain showers: Moderate";
-        case 82:
-            return "Rain showers: Violent";
-        case 85:
-            return "Snow showers: Slight";
-        case 86:
-            return "Snow showers: Heavy";
-        case 95:
-            return "Thunderstorm: Slight";
-        case 96:
-            return "Thunderstorm with slight hail";
-        case 99:
-            return "Thunderstorm with heavy hail";
-        default:
-            return "Unknown";
+    float getStationValue(const JsonArray &readings, const String &stationId) {
+        // First try to get data from the preferred station
+        for (JsonVariant reading : readings) {
+            JsonArray data = reading["data"];
+            for (JsonVariant dataPoint : data) {
+                if (dataPoint["stationId"].as<String>() == stationId) {
+                    float value = dataPoint["value"].as<float>();
+                    if (!isnan(value)) {
+                        return value;
+                    }
+                }
+            }
         }
+
+        // If preferred station has no data, try any available station
+        for (JsonVariant reading : readings) {
+            JsonArray data = reading["data"];
+            for (JsonVariant dataPoint : data) {
+                float value = dataPoint["value"].as<float>();
+                if (!isnan(value)) {
+                    return value;
+                }
+            }
+        }
+
+        return NAN;
     }
+
+    bool fetchTemperature() {
+        WiFiClientSecure secureClient;
+        secureClient.setInsecure(); // Skip certificate validation for simplicity
+        HTTPClient http;
+
+        if (!http.begin(secureClient, Config::NEA_TEMP_API)) {
+            return false;
+        }
+
+        http.addHeader("Accept", "application/json");
+        http.setTimeout(15000); // 15 second timeout for HTTPS
+
+        int httpCode = http.GET();
+
+        if (httpCode == HTTP_CODE_OK) {
+            String payload = http.getString();
+            http.end();
+
+            DynamicJsonDocument doc(8192);
+            DeserializationError error = deserializeJson(doc, payload);
+
+            if (!error && doc["code"] == 0) {
+                JsonArray stations = doc["data"]["stations"];
+                JsonArray readings = doc["data"]["readings"];
+
+                if (stations.size() > 0 && readings.size() > 0) {
+                    _closestStationId = findClosestStation(stations);
+                    _currentTemp = getStationValue(readings, _closestStationId);
+                    return !isnan(_currentTemp);
+                }
+            }
+        }
+
+        http.end();
+        return false;
+    }
+
+    bool fetchHumidity() {
+        if (_closestStationId.isEmpty()) return false;
+
+        WiFiClientSecure secureClient;
+        secureClient.setInsecure(); // Skip certificate validation
+        HTTPClient http;
+
+        if (!http.begin(secureClient, Config::NEA_HUMIDITY_API)) {
+            return false;
+        }
+
+        http.addHeader("Accept", "application/json");
+        http.setTimeout(15000);
+
+        int httpCode = http.GET();
+
+        if (httpCode == HTTP_CODE_OK) {
+            String payload = http.getString();
+            http.end();
+
+            DynamicJsonDocument doc(8192);
+            DeserializationError error = deserializeJson(doc, payload);
+
+            if (!error && doc["code"] == 0) {
+                JsonArray readings = doc["data"]["readings"];
+                _currentHumidity = getStationValue(readings, _closestStationId);
+                return !isnan(_currentHumidity);
+            }
+        }
+
+        http.end();
+        return false;
+    }
+
+    void updateDisplay() {
+        String line = "";
+
+        // Build outdoor temperature and humidity string
+        if (!isnan(_currentTemp)) {
+            line += String(_currentTemp, 1) + "°C";
+        }
+
+        if (!isnan(_currentHumidity)) {
+            if (line.length() > 0) line += "  ";
+            line += String((int)_currentHumidity) + "% RH";
+        }
+
+        // Add "Outdoor:" prefix
+        if (line.length() > 0) {
+            line = "Outdoor: " + line;
+        } else {
+            line = "Weather data unavailable";
+        }
+
+        _disp.updateWeather(line);
+    }
+
     DisplayManager &_disp;
     uint32_t _lastFetch = 0;
-    float _currentTemp = 0.0;
-    float _currentHumidity = 0.0;
-    String _currentWeather = "";
+    float _currentTemp = NAN;
+    float _currentHumidity = NAN;
+    String _closestStationId = "";
+    String _closestStationName = "";
+    double _closestStationDistance = 0.0;
 };

@@ -10,7 +10,7 @@ public:
         : _disp(disp), _sensors(sensors), _weather(weather) {}
 
     void begin() {
-        Serial.println("Energy estimator initialized");
+        // Energy estimator initialized
     }
 
     void poll() {
@@ -36,6 +36,9 @@ public:
 
     // Get energy efficiency ratio
     float getEER() const { return _currentEER; }
+
+    // Get estimated duty cycle (fraction of time AC is running)
+    float getCurrentDutyCycle() const { return _currentDutyCycle; }
 
 private:
     void calculateEnergyUsage() {
@@ -80,35 +83,22 @@ private:
         // Ensure reasonable bounds
         _estimatedPowerWatts = constrain(_estimatedPowerWatts, Config::AC_MIN_POWER_WATTS, Config::AC_MAX_POWER_WATTS);
 
-        // Calculate daily energy consumption (kWh)
-        _dailyEnergyKWh = (_estimatedPowerWatts * 24.0) / 1000.0;
+        // Calculate estimated duty cycle based on temperature control needs
+        float dutyCycle = calculateDutyCycle(indoorTemp, outdoorTemp);
+        _currentDutyCycle = dutyCycle;
+
+        // Calculate daily energy consumption (kWh) with realistic duty cycle
+        _dailyEnergyKWh = (_estimatedPowerWatts * 24.0 * dutyCycle) / 1000.0;
 
         // Update display with energy information
         updateEnergyDisplay();
-
-        // Enhanced logging for analysis
-        Serial.println("=== Energy Estimation Analysis ===");
-        Serial.println("Environmental Conditions:");
-        Serial.println("  Indoor: " + String(indoorTemp, 1) + "°C, " + String(indoorHumidity, 1) + "%");
-        Serial.println("  Outdoor: " + String(outdoorTemp, 1) + "°C, " + String(outdoorHumidity, 1) + "%");
-        Serial.println("Heat Load Analysis:");
-        Serial.println("  Sensible Heat Load: " + String(sensibleHeatLoad, 0) + "W");
-        Serial.println("  Latent Heat Load: " + String(latentHeatLoad, 0) + "W");
-        Serial.println("  Total Heat Load: " + String(totalHeatLoad, 0) + "W (" + String(_heatLoadBTU, 0) + " BTU/hr)");
-        Serial.println("Performance Metrics:");
-        Serial.println("  COP: " + String(_currentCOP, 2));
-        Serial.println("  EER: " + String(_currentEER, 1) + " BTU/Wh");
-        Serial.println("Power & Cost:");
-        Serial.println("  Estimated Power: " + String(_estimatedPowerWatts, 0) + "W");
-        Serial.println("  Daily Energy: " + String(_dailyEnergyKWh, 2) + " kWh");
-        Serial.println("  Daily Cost: $" + String(getDailyCostEstimate(), 2));
-        Serial.println("===================================");
     }
 
     void updateEnergyDisplay() {
         String energyLine = String((int)_estimatedPowerWatts) + "W  •  " +
                             String(_dailyEnergyKWh, 1) + "kWh/day  •  " +
-                            "$" + String(getDailyCostEstimate(), 2) + "/day";
+                            "$" + String(getDailyCostEstimate(), 2) + "/day  •  " +
+                            String((int)(_currentDutyCycle * 100)) + "% duty";
 
         _disp.updateEnergyEstimate(energyLine);
     }
@@ -184,6 +174,40 @@ private:
         return efficiencyFactor;
     }
 
+    // Calculate estimated duty cycle (fraction of time AC is running)
+    float calculateDutyCycle(float indoorTemp, float outdoorTemp) {
+        // Calculate how far we are from target temperature
+        float tempError = abs(indoorTemp - Config::TARGET_INDOOR_TEMP);
+        float outdoorTempDiff = abs(outdoorTemp - Config::TARGET_INDOOR_TEMP);
+
+        // Base duty cycle on outdoor conditions - hotter outside = more runtime needed
+        float baseDutyCycle = Config::BASE_DUTY_CYCLE;
+
+        // If outdoor temp is close to target, AC barely needs to run
+        if (outdoorTempDiff <= Config::DUTY_CYCLE_TEMP_THRESHOLD) {
+            return baseDutyCycle;
+        }
+
+        // Calculate load-based duty cycle
+        // More extreme outdoor temps = higher duty cycle
+        float loadDutyCycle = (outdoorTempDiff - Config::DUTY_CYCLE_TEMP_THRESHOLD) * Config::DUTY_CYCLE_LOAD_FACTOR;
+        loadDutyCycle = constrain(loadDutyCycle, 0.0, 0.7); // Max 70% for load
+
+        // Add correction based on how well we're maintaining target temp
+        float controlDutyCycle = 0.0;
+        if (tempError > 1.0) {
+            // If we're not maintaining target well, increase duty cycle
+            controlDutyCycle = (tempError - 1.0) * Config::DUTY_CYCLE_CONTROL_FACTOR;
+            controlDutyCycle = constrain(controlDutyCycle, 0.0, 0.3); // Max 30% correction
+        }
+
+        // Total duty cycle
+        float totalDutyCycle = baseDutyCycle + loadDutyCycle + controlDutyCycle;
+
+        // Ensure reasonable bounds
+        return constrain(totalDutyCycle, Config::MIN_DUTY_CYCLE, Config::MAX_DUTY_CYCLE);
+    }
+
     DisplayManager &_disp;
     SensorHelper &_sensors;
     WeatherHelper &_weather;
@@ -194,4 +218,5 @@ private:
     float _currentCOP = 0.0;
     float _heatLoadBTU = 0.0;
     float _currentEER = 0.0;
+    float _currentDutyCycle = 0.0;
 };
