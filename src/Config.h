@@ -3,17 +3,17 @@
 
 namespace Config {
     /* Wi-Fi ------------------------------------------------------ */
-    constexpr char SSID[] = "tkkr.dev";
-    constexpr char PASSWORD[] = "tkkr.dev";
-    constexpr int WIFI_TIMEOUT_MS = 15'000;
-    constexpr int WIFI_RETRY_DELAY_MS = 5'000;
+    constexpr char SSID[] = "tkkr.dev";        // Wi-Fi SSID
+    constexpr char PASSWORD[] = "tkkr.dev";    // Wi-Fi Password
+    constexpr int WIFI_TIMEOUT_MS = 15'000;    // Wi-Fi connection timeout
+    constexpr int WIFI_RETRY_DELAY_MS = 5'000; // Wi-Fi reconnection delay
 
     /* Time / NTP ------------------------------------------------- */
-    constexpr long GMT_OFFSET_SEC = 8 * 3600; // UTC+8
-    constexpr char NTP_SERVER[] = "pool.ntp.org";
+    constexpr long GMT_OFFSET_SEC = 8 * 3600;     // UTC+8
+    constexpr char NTP_SERVER[] = "pool.ntp.org"; // NTP server for time synchronization
 
     /* Misc ------------------------------------------------------- */
-    constexpr uint32_t CLOCK_REFRESH_MS = 1'000; // update once per second
+    constexpr uint32_t CLOCK_REFRESH_MS = 1'000; // Update once per second
 
     /* Weather / Location ---------------------------------------- */
     constexpr double LATITUDE = 1.330591328881519; // Ngee Ann Polytechnic
