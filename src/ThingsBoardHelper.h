@@ -135,7 +135,7 @@ private:
 
         Serial.println("HTTP URL: " + url);
 
-        _httpClient.begin(url);
+        _httpClient.begin(_wifiClient, url);
         _httpClient.addHeader("Content-Type", "application/json");
 
         int httpResponseCode = _httpClient.POST(jsonData);
@@ -163,8 +163,8 @@ private:
             return false;
         }
     }
-
     HTTPClient _httpClient;
+    WiFiClient _wifiClient;
     DisplayManager &_disp;
     SensorHelper &_sensors;
     WeatherHelper &_weather;
