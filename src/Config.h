@@ -37,8 +37,8 @@ namespace Config {
     constexpr char NEA_HUMIDITY_API[] = "https://api-open.data.gov.sg/v2/real-time/api/relative-humidity";
 
     /* ThingsBoard ----------------------------------------------- */
-    constexpr char THINGSBOARD_HTTP_URL[] = "http://demo.thingsboard.io/api/v1/Lf9RdVDk3p65AEfAUu1m/telemetry"; // Complete HTTP URL
-    constexpr uint32_t THINGSBOARD_UPLOAD_INTERVAL_MS = 30'000;                                                 // Upload every 30 seconds
+    constexpr char THINGSBOARD_HTTP_URL[] = "http://demo.thingsboard.io/api/v1/4pz51pefyj8yig0m0f4w/telemetry"; // Complete HTTP URL
+    constexpr uint32_t THINGSBOARD_UPLOAD_INTERVAL_MS = 60'000;                                                 // Upload every 1 minute (reduced for rate limits)
 
     // =======================================================================
     // HARDWARE & SENSORS
@@ -153,18 +153,18 @@ namespace Config {
     // Temperature thresholds
     constexpr float TEMP_HIGH_THRESHOLD = 30.0;            // °C - High temperature alert
     constexpr float TEMP_LOW_THRESHOLD = 15.0;             // °C - Low temperature alert
-    constexpr float TEMP_DIFFERENCE_HIGH_THRESHOLD = 12.0; // °C - High indoor/outdoor temperature difference alert
+    constexpr float TEMP_DIFFERENCE_HIGH_THRESHOLD = 10.0; // °C - High indoor/outdoor temperature difference alert
 
     // Humidity thresholds
-    constexpr float HUMIDITY_HIGH_THRESHOLD = 80.0;            // % - High humidity alert
+    constexpr float HUMIDITY_HIGH_THRESHOLD = 60.0;            // % - High humidity alert
     constexpr float HUMIDITY_LOW_THRESHOLD = 30.0;             // % - Low humidity alert
     constexpr float HUMIDITY_DIFFERENCE_HIGH_THRESHOLD = 25.0; // % - High indoor/outdoor humidity difference alert
 
     // Air quality thresholds
-    constexpr float CO_HIGH_THRESHOLD = 30.0;       // ppm - CO concentration alert (WHO 8-hour avg: 30 ppm)
+    constexpr float CO_HIGH_THRESHOLD = 10.0;       // ppm - CO concentration alert (WHO 8-hour avg: 30 ppm)
     constexpr bool OZONE_ALERT_ON_DETECTION = true; // Alert when ozone is detected (digital sensor)
 
     // Energy consumption thresholds
     constexpr float POWER_HIGH_THRESHOLD = 1500.0;   // W - High power consumption alert
-    constexpr float DAILY_COST_HIGH_THRESHOLD = 8.0; // $ - High daily cost alert
+    constexpr float DAILY_COST_HIGH_THRESHOLD = 5.0; // $ - High daily cost alert
 }

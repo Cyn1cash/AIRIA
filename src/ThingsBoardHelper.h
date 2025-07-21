@@ -49,6 +49,17 @@ public:
     // Get connection status (for HTTP, always true if WiFi is connected)
     bool isConnected() { return WiFi.status() == WL_CONNECTED; }
 
+    // Test method with minimal JSON
+    void testMinimalUpload() {
+        String testJson = "{\"temperature\":25.0}";
+        Serial.println("Testing minimal JSON: " + testJson);
+        if (sendHttpTelemetry(testJson)) {
+            Serial.println("Minimal test: SUCCESS");
+        } else {
+            Serial.println("Minimal test: FAILED - " + _lastError);
+        }
+    }
+
 private:
     void uploadData() {
         _lastUpload = millis();
@@ -145,9 +156,7 @@ private:
 
         if (httpResponseCode > 0) {
             String response = _httpClient.getString();
-            if (response.length() > 0) {
-                Serial.println("HTTP Response: " + response);
-            }
+            Serial.println("HTTP Response Body: " + response); // Always show response for debugging
 
             _httpClient.end();
 
