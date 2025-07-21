@@ -25,6 +25,7 @@ public:
 
     void begin() {
         _mqttClient.setServer(Config::THINGSBOARD_MQTT_SERVER, Config::THINGSBOARD_MQTT_PORT);
+        _mqttClient.setBufferSize(1024); // Increase buffer size for larger JSON payloads
         _lastReconnectAttempt = 0;
     }
 
@@ -124,6 +125,10 @@ private:
         serializeJson(doc, jsonString);
 
         Serial.println("Sending JSON: " + jsonString);
+        Serial.print("JSON length: ");
+        Serial.println(jsonString.length());
+        Serial.print("MQTT connected: ");
+        Serial.println(_mqttClient.connected() ? "Yes" : "No");
 
         // Publish to ThingsBoard via MQTT
         if (publishToThingsBoard(jsonString)) {
@@ -143,11 +148,20 @@ private:
     bool publishToThingsBoard(const String &jsonData) {
         if (!_mqttClient.connected()) {
             _lastError = ThingsBoardErrors::MQTT_NOT_CONNECTED;
+            Serial.println("ERROR: MQTT not connected!");
             return false;
         }
 
+        Serial.print("Publishing to topic: ");
+        Serial.println(Config::THINGSBOARD_TELEMETRY_TOPIC);
+
         // Use QoS 0 for better reliability during testing
-        if (_mqttClient.publish(Config::THINGSBOARD_TELEMETRY_TOPIC, jsonData.c_str(), false)) {
+        bool result = _mqttClient.publish(Config::THINGSBOARD_TELEMETRY_TOPIC, jsonData.c_str(), false);
+
+        Serial.print("Publish result: ");
+        Serial.println(result ? "SUCCESS" : "FAILED");
+
+        if (result) {
             return true;
         } else {
             _lastError = ThingsBoardErrors::MQTT_PUBLISH_FAILED;

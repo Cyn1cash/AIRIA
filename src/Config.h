@@ -43,9 +43,9 @@ namespace Config {
     constexpr char THINGSBOARD_USERNAME[] = "wksgv7r69edc4no3f0hu";
     constexpr char THINGSBOARD_PASSWORD[] = "ewuh3zxcnraud484sh0l";
     constexpr char THINGSBOARD_TELEMETRY_TOPIC[] = "v1/devices/me/telemetry"; // Standard telemetry topic
-    constexpr uint8_t THINGSBOARD_QOS = 0;                      // QoS level for MQTT messages (0 for testing)
-    constexpr uint32_t THINGSBOARD_UPLOAD_INTERVAL_MS = 30'000; // Upload every 30 seconds
-    constexpr uint32_t MQTT_RECONNECT_DELAY_MS = 5'000;         // MQTT reconnection delay
+    constexpr uint8_t THINGSBOARD_QOS = 0;                                    // QoS level for MQTT messages (0 for testing)
+    constexpr uint32_t THINGSBOARD_UPLOAD_INTERVAL_MS = 30'000;               // Upload every 30 seconds
+    constexpr uint32_t MQTT_RECONNECT_DELAY_MS = 5'000;                       // MQTT reconnection delay
 
     // =======================================================================
     // HARDWARE & SENSORS
