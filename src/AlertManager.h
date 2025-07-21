@@ -5,8 +5,6 @@
 #include "SensorHelper.h"
 #include "WeatherHelper.h"
 #include <Arduino.h>
-#include <NexButton.h>
-#include <NexHardware.h>
 
 enum class AlertType {
     NONE = 0,
@@ -29,10 +27,6 @@ struct AlertInfo {
     uint32_t firstTriggered;
 };
 
-// Forward declaration for callback
-class AlertManager;
-void buzzerButtonCallback(void *ptr);
-
 class AlertManager {
 public:
     explicit AlertManager(DisplayManager &disp, SensorHelper &sensors, EnergyEstimator &energy, WeatherHelper &weather)
@@ -46,13 +40,6 @@ public:
 
         // Initialize alerts
         initializeAlerts();
-
-        // Set up buzzer button callback
-        _buzzerButton.attachPop(buzzerButtonCallback, this);
-
-        // Set initial buzzer button state on display (enabled by default)
-        sendCommand("details.buzzer.val=1");
-        _buzzerRuntimeEnabled = true;
     }
 
     void poll() {
@@ -88,7 +75,9 @@ public:
         }
 
         return hasAlerts ? ("Alerts: " + result) : "No alerts";
-    } // Check if any alerts are currently active
+    }
+
+    // Check if any alerts are currently active
     bool hasActiveAlerts() const {
         for (const auto &alert : _alerts) {
             if (alert.active) {
@@ -107,33 +96,6 @@ public:
             }
         }
         return count;
-    }
-
-    // Handle buzzer button press from Nextion display
-    void handleBuzzerButtonPress() {
-        uint32_t buttonValue;
-
-        // Send command to get the button's val attribute
-        sendCommand("get details.buzzer.val");
-        if (recvRetNumber(&buttonValue)) {
-            _buzzerRuntimeEnabled = (buttonValue == 1);
-            // If buzzer is disabled, ensure it's turned off immediately
-            if (!_buzzerRuntimeEnabled && Config::BUZZER_ENABLED) {
-                digitalWrite(Config::BUZZER_PIN, LOW);
-                _buzzerState = BuzzerState::IDLE;
-                _beepCount = 0;
-            }
-        }
-    }
-
-    // Get the buzzer button object for nexLoop
-    static NexButton *getBuzzerButton() {
-        return &_buzzerButton;
-    }
-
-    // Get current buzzer runtime enable state
-    bool isBuzzerRuntimeEnabled() const {
-        return _buzzerRuntimeEnabled;
     }
 
 private:
@@ -220,12 +182,8 @@ private:
     }
 
     void handleBuzzer() {
-        // Skip buzzer functionality if disabled in config or runtime
-        if (!Config::BUZZER_ENABLED || !_buzzerRuntimeEnabled) {
-            // Ensure buzzer is off when disabled
-            if (Config::BUZZER_ENABLED) {
-                digitalWrite(Config::BUZZER_PIN, LOW);
-            }
+        // Skip buzzer functionality if disabled in config
+        if (!Config::BUZZER_ENABLED) {
             _buzzerState = BuzzerState::IDLE;
             _beepCount = 0;
             return;
@@ -301,24 +259,8 @@ private:
     uint32_t _lastBuzzerCheck = 0; // Add timing control for buzzer
     AlertInfo _alerts[10];         // Array to store all alert types (increased from 9 to 10)
 
-    // Buzzer control
-    bool _buzzerRuntimeEnabled = true; // Runtime buzzer enable/disable state
-    static NexButton _buzzerButton;    // Buzzer control button on Nextion display
-
     // Buzzer state management
     BuzzerState _buzzerState = BuzzerState::IDLE;
     uint32_t _buzzerStartTime = 0;
     uint8_t _beepCount = 0;
-
-    friend void buzzerButtonCallback(void *ptr);
 };
-
-NexButton AlertManager::_buzzerButton(2, 11, "buzzer");
-
-// Callback function for buzzer button press
-void buzzerButtonCallback(void *ptr) {
-    AlertManager *alertManager = static_cast<AlertManager *>(ptr);
-    if (alertManager) {
-        alertManager->handleBuzzerButtonPress();
-    }
-}
