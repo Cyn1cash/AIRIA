@@ -115,6 +115,198 @@ public:
         return getCurrentHeatLoadWatts() < Config::AUTO_OFF_HEAT_LOAD_THRESHOLD;
     }
 
+    // Get detailed heat load breakdown for configuration and monitoring
+    String getHeatLoadDetails() const {
+        if (!_sensors.isDataValid() || isnan(_weather.getCurrentTemp()) || isnan(_weather.getCurrentHumidity())) {
+            return "Heat Load: INVALID DATA";
+        }
+
+        float indoorTemp = _sensors.getIndoorTemp();
+        float outdoorTemp = _weather.getCurrentTemp();
+        float indoorHumidity = _sensors.getIndoorHumidity();
+        float outdoorHumidity = _weather.getCurrentHumidity();
+
+        // Calculate individual components
+        float sensibleLoad = calculateSensibleHeatLoad(indoorTemp, outdoorTemp);
+        float latentLoad = calculateLatentHeatLoad(indoorHumidity, outdoorHumidity, indoorTemp, outdoorTemp);
+        float totalLoad = sensibleLoad + latentLoad;
+
+        // Calculate percentages
+        float sensiblePercent = (totalLoad > 0) ? (sensibleLoad / totalLoad * 100.0) : 0.0;
+        float latentPercent = (totalLoad > 0) ? (latentLoad / totalLoad * 100.0) : 0.0;
+
+        // Temperature and humidity differences
+        float tempDiff = abs(outdoorTemp - indoorTemp);
+        float humidityDiff = abs(outdoorHumidity - indoorHumidity);
+
+        // Build detailed report
+        String details = "";
+        details += "=== HEAT LOAD ANALYSIS ===\n";
+        details += "Total Heat Load: " + String((int)totalLoad) + "W\n";
+        details += "  - Sensible: " + String((int)sensibleLoad) + "W (" + String((int)sensiblePercent) + "%)\n";
+        details += "  - Latent: " + String((int)latentLoad) + "W (" + String((int)latentPercent) + "%)\n\n";
+
+        details += "=== CONDITIONS ===\n";
+        details += "Indoor: " + String(indoorTemp, 1) + "°C, " + String((int)indoorHumidity) + "%RH\n";
+        details += "Outdoor: " + String(outdoorTemp, 1) + "°C, " + String((int)outdoorHumidity) + "%RH\n";
+        details += "Temp Diff: " + String(tempDiff, 1) + "°C\n";
+        details += "Humidity Diff: " + String(humidityDiff, 1) + "%\n\n";
+
+        details += "=== AUTO THRESHOLDS ===\n";
+        details += "Auto ON: " + String((int)Config::AUTO_ON_HEAT_LOAD_THRESHOLD) + "W ";
+        details += (totalLoad > Config::AUTO_ON_HEAT_LOAD_THRESHOLD) ? "[WOULD START]" : "[below]";
+        details += "\nAuto OFF: " + String((int)Config::AUTO_OFF_HEAT_LOAD_THRESHOLD) + "W ";
+        details += (totalLoad < Config::AUTO_OFF_HEAT_LOAD_THRESHOLD) ? "[WOULD STOP]" : "[above]";
+        details += "\n\n";
+
+        details += "=== RECOMMENDATIONS ===\n";
+        if (totalLoad < 200) {
+            details += "Very low load - consider higher AUTO_OFF threshold\n";
+        } else if (totalLoad > 1500) {
+            details += "Very high load - verify room parameters\n";
+        }
+
+        if (sensiblePercent > 80) {
+            details += "Mostly temperature-driven - check insulation\n";
+        } else if (latentPercent > 60) {
+            details += "High humidity load - check ventilation\n";
+        }
+
+        if (tempDiff > 12) {
+            details += "Large temp difference - peak cooling needed\n";
+        } else if (tempDiff < 3) {
+            details += "Small temp difference - minimal cooling\n";
+        }
+
+        return details;
+    }
+
+    // Update heat load details on Nextion display
+    void updateHeatLoadDisplay() const {
+        if (!_sensors.isDataValid() || isnan(_weather.getCurrentTemp()) || isnan(_weather.getCurrentHumidity())) {
+            _disp.updateHeatLoadTotal("No Data");
+            return;
+        }
+
+        float indoorTemp = _sensors.getIndoorTemp();
+        float outdoorTemp = _weather.getCurrentTemp();
+        float indoorHumidity = _sensors.getIndoorHumidity();
+        float outdoorHumidity = _weather.getCurrentHumidity();
+
+        // Calculate components
+        float sensibleLoad = calculateSensibleHeatLoad(indoorTemp, outdoorTemp);
+        float latentLoad = calculateLatentHeatLoad(indoorHumidity, outdoorHumidity, indoorTemp, outdoorTemp);
+        float totalLoad = sensibleLoad + latentLoad;
+
+        // Calculate percentages
+        float sensiblePercent = (totalLoad > 0) ? (sensibleLoad / totalLoad * 100.0) : 0.0;
+        float latentPercent = (totalLoad > 0) ? (latentLoad / totalLoad * 100.0) : 0.0;
+
+        // Temperature and humidity differences
+        float tempDiff = abs(outdoorTemp - indoorTemp);
+        float humidityDiff = abs(outdoorHumidity - indoorHumidity);
+
+        // Update display components
+        _disp.updateHeatLoadTotal(String((int)totalLoad) + "W");
+        _disp.updateHeatLoadSensible(String((int)sensibleLoad) + "W (" + String((int)sensiblePercent) + "%)");
+        _disp.updateHeatLoadLatent(String((int)latentLoad) + "W (" + String((int)latentPercent) + "%)");
+
+        _disp.updateHeatLoadIndoor("In: " + String(indoorTemp, 1) + "°C " + String((int)indoorHumidity) + "%");
+        _disp.updateHeatLoadOutdoor("Out: " + String(outdoorTemp, 1) + "°C " + String((int)outdoorHumidity) + "%");
+        _disp.updateHeatLoadDifferences("ΔT:" + String(tempDiff, 1) + "°C ΔH:" + String(humidityDiff, 1) + "%");
+
+        // Threshold status
+        String onStatus = (totalLoad > Config::AUTO_ON_HEAT_LOAD_THRESHOLD) ? "WOULD START" : "below";
+        String offStatus = (totalLoad < Config::AUTO_OFF_HEAT_LOAD_THRESHOLD) ? "WOULD STOP" : "above";
+
+        _disp.updateHeatLoadThresholdOn("ON:" + String((int)Config::AUTO_ON_HEAT_LOAD_THRESHOLD) + "W " + onStatus);
+        _disp.updateHeatLoadThresholdOff("OFF:" + String((int)Config::AUTO_OFF_HEAT_LOAD_THRESHOLD) + "W " + offStatus);
+
+        // Recommendations
+        String recommendation = "";
+        if (totalLoad < 200) {
+            recommendation = "Very low load - raise AUTO_OFF";
+        } else if (totalLoad > 1500) {
+            recommendation = "Very high load - check room config";
+        } else if (sensiblePercent > 80) {
+            recommendation = "Temperature-driven - check insulation";
+        } else if (latentPercent > 60) {
+            recommendation = "High humidity - check ventilation";
+        } else if (tempDiff > 12) {
+            recommendation = "Large temp diff - peak cooling";
+        } else if (tempDiff < 3) {
+            recommendation = "Small temp diff - minimal cooling";
+        } else {
+            recommendation = "Heat load is balanced";
+        }
+
+        _disp.updateHeatLoadRecommendation(recommendation);
+    }
+
+    // Get simplified heat load summary for display
+    String getHeatLoadSummary() const {
+        if (!_sensors.isDataValid() || isnan(_weather.getCurrentTemp()) || isnan(_weather.getCurrentHumidity())) {
+            return "Heat Load: No Data";
+        }
+
+        float totalLoad = getCurrentHeatLoadWatts();
+        String status = "";
+
+        if (totalLoad > Config::AUTO_ON_HEAT_LOAD_THRESHOLD) {
+            status = "HIGH";
+        } else if (totalLoad > Config::AUTO_OFF_HEAT_LOAD_THRESHOLD) {
+            status = "MED";
+        } else {
+            status = "LOW";
+        }
+
+        return "Heat Load: " + String((int)totalLoad) + "W (" + status + ")";
+    }
+
+    // Get configuration recommendations based on current conditions
+    String getConfigRecommendations() const {
+        String recommendations = "";
+        recommendations += "=== CONFIGURATION RECOMMENDATIONS ===\n\n";
+
+        // Room size recommendations
+        float roomVolume = Config::ROOM_AIR_VOLUME;
+        float roomArea = Config::ROOM_SURFACE_AREA;
+
+        recommendations += "Current Room Config:\n";
+        recommendations += "- Volume: " + String(roomVolume, 0) + "m³\n";
+        recommendations += "- Surface Area: " + String(roomArea, 0) + "m²\n";
+        recommendations += "- Heat Transfer Coeff: " + String(Config::ROOM_HEAT_TRANSFER_COEFF, 1) + "\n\n";
+
+        // Threshold recommendations based on room size
+        float recommendedOnThreshold = roomVolume * 10.0; // ~10W per m³
+        float recommendedOffThreshold = recommendedOnThreshold * 0.5;
+
+        recommendations += "Recommended Thresholds:\n";
+        recommendations += "- AUTO_ON_HEAT_LOAD_THRESHOLD: " + String((int)recommendedOnThreshold) + "W\n";
+        recommendations += "- AUTO_OFF_HEAT_LOAD_THRESHOLD: " + String((int)recommendedOffThreshold) + "W\n";
+        recommendations += "(Current: " + String((int)Config::AUTO_ON_HEAT_LOAD_THRESHOLD) + "W / ";
+        recommendations += String((int)Config::AUTO_OFF_HEAT_LOAD_THRESHOLD) + "W)\n\n";
+
+        // AC power recommendations
+        float minRecommendedPower = roomVolume * 15.0; // ~15W per m³
+        float maxRecommendedPower = roomVolume * 25.0; // ~25W per m³
+
+        recommendations += "Recommended AC Power Range:\n";
+        recommendations += "- MIN: " + String((int)minRecommendedPower) + "W\n";
+        recommendations += "- MAX: " + String((int)maxRecommendedPower) + "W\n";
+        recommendations += "(Current: " + String((int)Config::AC_MIN_POWER_WATTS) + "W / ";
+        recommendations += String((int)Config::AC_MAX_POWER_WATTS) + "W)\n\n";
+
+        recommendations += "=== TUNING TIPS ===\n";
+        recommendations += "1. Monitor heat load for 1 week\n";
+        recommendations += "2. Note typical HIGH/MED/LOW values\n";
+        recommendations += "3. Set AUTO_ON = typical HIGH value\n";
+        recommendations += "4. Set AUTO_OFF = 50% of AUTO_ON\n";
+        recommendations += "5. Adjust based on comfort/efficiency\n";
+
+        return recommendations;
+    }
+
     // Calculate sensible heat load based on temperature difference (public for monitoring)
     float calculateSensibleHeatLoad(float indoorTemp, float outdoorTemp) const {
         // Sensible heat load = U * A * ΔT

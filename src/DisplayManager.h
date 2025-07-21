@@ -94,6 +94,35 @@ public:
                           String("CO: ") + String(voltage, 2) + "V (ADC: " + String(analogReading) + ") (D: " + digitalState + ")");
     }
 
+    /* -------- Heat Load page ------- */
+    void updateHeatLoadTotal(const String &value) {
+        updateTextElement("heatload.total", value);
+    }
+    void updateHeatLoadSensible(const String &value) {
+        updateTextElement("heatload.sensible", value);
+    }
+    void updateHeatLoadLatent(const String &value) {
+        updateTextElement("heatload.latent", value);
+    }
+    void updateHeatLoadIndoor(const String &value) {
+        updateTextElement("heatload.indoor", value);
+    }
+    void updateHeatLoadOutdoor(const String &value) {
+        updateTextElement("heatload.outdoor", value);
+    }
+    void updateHeatLoadDifferences(const String &value) {
+        updateTextElement("heatload.differences", value);
+    }
+    void updateHeatLoadThresholdOn(const String &value) {
+        updateTextElement("heatload.thresholdOn", value);
+    }
+    void updateHeatLoadThresholdOff(const String &value) {
+        updateTextElement("heatload.thresholdOff", value);
+    }
+    void updateHeatLoadRecommendation(const String &value) {
+        updateTextElement("heatload.recommendation", value);
+    }
+
 private:
     static void sendCmd(const char *cmd) { ::sendCommand(cmd); }
     static void show(const char *id) { sendCmd((String("vis ") + id + ",1").c_str()); }
