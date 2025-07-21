@@ -109,8 +109,9 @@ namespace Config {
     constexpr float TEMP_DIFFERENCE_HIGH_THRESHOLD = 12.0; // °C - High indoor/outdoor temperature difference alert
 
     // Humidity thresholds
-    constexpr float HUMIDITY_HIGH_THRESHOLD = 80.0; // % - High humidity alert
-    constexpr float HUMIDITY_LOW_THRESHOLD = 30.0;  // % - Low humidity alert
+    constexpr float HUMIDITY_HIGH_THRESHOLD = 80.0;            // % - High humidity alert
+    constexpr float HUMIDITY_LOW_THRESHOLD = 30.0;             // % - Low humidity alert
+    constexpr float HUMIDITY_DIFFERENCE_HIGH_THRESHOLD = 25.0; // % - High indoor/outdoor humidity difference alert
 
     // Air quality thresholds
     constexpr float CO_HIGH_THRESHOLD = 30.0;       // ppm - CO concentration alert (WHO 8-hour avg: 30 ppm)

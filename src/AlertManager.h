@@ -13,6 +13,7 @@ enum class AlertType {
     TEMP_DIFFERENCE_HIGH,
     HUMIDITY_HIGH,
     HUMIDITY_LOW,
+    HUMIDITY_DIFFERENCE_HIGH,
     CO_HIGH,
     OZONE_DETECTED,
     POWER_HIGH,
@@ -102,10 +103,11 @@ private:
         _alerts[2] = {AlertType::TEMP_DIFFERENCE_HIGH, "High Temp Diff", false, 0};
         _alerts[3] = {AlertType::HUMIDITY_HIGH, "High Humidity", false, 0};
         _alerts[4] = {AlertType::HUMIDITY_LOW, "Low Humidity", false, 0};
-        _alerts[5] = {AlertType::CO_HIGH, "High CO", false, 0};
-        _alerts[6] = {AlertType::OZONE_DETECTED, "Ozone Detected", false, 0};
-        _alerts[7] = {AlertType::POWER_HIGH, "High Power", false, 0};
-        _alerts[8] = {AlertType::DAILY_COST_HIGH, "High Cost", false, 0};
+        _alerts[5] = {AlertType::HUMIDITY_DIFFERENCE_HIGH, "High Humidity Diff", false, 0};
+        _alerts[6] = {AlertType::CO_HIGH, "High CO", false, 0};
+        _alerts[7] = {AlertType::OZONE_DETECTED, "Ozone Detected", false, 0};
+        _alerts[8] = {AlertType::POWER_HIGH, "High Power", false, 0};
+        _alerts[9] = {AlertType::DAILY_COST_HIGH, "High Cost", false, 0};
     }
 
     void checkAlerts() {
@@ -126,6 +128,13 @@ private:
             float humidity = _sensors.getIndoorHumidity();
             checkAndUpdateAlert(AlertType::HUMIDITY_HIGH, humidity > Config::HUMIDITY_HIGH_THRESHOLD, currentTime);
             checkAndUpdateAlert(AlertType::HUMIDITY_LOW, humidity < Config::HUMIDITY_LOW_THRESHOLD, currentTime);
+
+            // Check humidity difference alert
+            if (!isnan(_weather.getCurrentHumidity())) {
+                float outdoorHumidity = _weather.getCurrentHumidity();
+                float humidityDifference = abs(outdoorHumidity - humidity);
+                checkAndUpdateAlert(AlertType::HUMIDITY_DIFFERENCE_HIGH, humidityDifference > Config::HUMIDITY_DIFFERENCE_HIGH_THRESHOLD, currentTime);
+            }
         }
 
         // Check CO alerts
@@ -244,7 +253,7 @@ private:
 
     uint32_t _lastAlertCheck = 0;
     uint32_t _lastBuzzerCheck = 0; // Add timing control for buzzer
-    AlertInfo _alerts[9];          // Array to store all alert types (increased from 8 to 9)
+    AlertInfo _alerts[10];         // Array to store all alert types (increased from 9 to 10)
 
     // Buzzer state management
     BuzzerState _buzzerState = BuzzerState::IDLE;
