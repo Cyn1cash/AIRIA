@@ -4,28 +4,77 @@
 #include "SensorHelper.h"
 #include "WeatherHelper.h"
 
+enum class ACPowerState {
+    OFF,        // AC is completely off
+    STARTING,   // AC just turned on, high power draw
+    RUNNING,    // AC is actively cooling
+    IDLE        // AC is on but compressor is off (fan only)
+};
+
 class EnergyEstimator {
 public:
     explicit EnergyEstimator(DisplayManager &disp, SensorHelper &sensors, WeatherHelper &weather)
-        : _disp(disp), _sensors(sensors), _weather(weather) {}
+        : _disp(disp), _sensors(sensors), _weather(weather), _acState(ACPowerState::OFF) {}
 
     void begin() {
-        // Energy estimator initialized
+        // Initialize energy estimator with AC off
+        _acState = ACPowerState::OFF;
+        _lastStateChange = millis();
+        _totalRuntimeToday = 0;
+        _dailyEnergyConsumed = 0.0;
+        _lastDayReset = millis();
     }
 
     void poll() {
         if (millis() - _lastCalculation >= Config::ENERGY_CALC_REFRESH_MS) {
+            updateACState();
             calculateEnergyUsage();
+            trackDailyUsage();
         }
     }
 
-    // Get estimated power consumption in watts
+    // Manual AC control methods
+    void setACOn() { 
+        if (_acState == ACPowerState::OFF) {
+            _acState = ACPowerState::STARTING;
+            _lastStateChange = millis();
+        }
+    }
+    
+    void setACOff() { 
+        if (_acState != ACPowerState::OFF) {
+            // Add runtime to today's total before turning off
+            _totalRuntimeToday += (millis() - _lastStateChange) / 1000; // seconds
+            _acState = ACPowerState::OFF;
+            _lastStateChange = millis();
+        }
+    }
+
+    // Get current AC state
+    ACPowerState getACState() const { return _acState; }
+    
+    // Get today's total runtime in hours
+    float getTodaysRuntimeHours() const { 
+        uint32_t currentRuntime = _totalRuntimeToday;
+        if (_acState != ACPowerState::OFF) {
+            currentRuntime += (millis() - _lastStateChange) / 1000;
+        }
+        return currentRuntime / 3600.0; 
+    }
+
+    // Get estimated power consumption in watts (0 if AC is off)
     float getEstimatedPowerWatts() const { return _estimatedPowerWatts; }
 
-    // Get daily energy consumption estimate in kWh
+    // Get today's actual energy consumption in kWh
+    float getTodaysEnergyKWh() const { return _dailyEnergyConsumed; }
+
+    // Get projected daily energy consumption estimate in kWh
     float getDailyEnergyKWh() const { return _dailyEnergyKWh; }
 
-    // Get cost estimate per day (assuming electricity rate)
+    // Get cost estimate for today's actual usage
+    float getTodaysCostEstimate() const { return _dailyEnergyConsumed * Config::ELECTRICITY_RATE_PER_KWH; }
+
+    // Get projected daily cost estimate
     float getDailyCostEstimate() const { return _dailyEnergyKWh * Config::ELECTRICITY_RATE_PER_KWH; }
 
     // Get current COP (Coefficient of Performance) - efficiency metric
@@ -37,68 +86,177 @@ public:
     // Get energy efficiency ratio
     float getEER() const { return _currentEER; }
 
-    // Get estimated duty cycle (fraction of time AC is running)
+    // Get current duty cycle (percentage of day AC has been running)
     float getCurrentDutyCycle() const { return _currentDutyCycle; }
 
 private:
-    void calculateEnergyUsage() {
-        _lastCalculation = millis();
-
-        // Only calculate if we have valid sensor data
+    // Update AC state based on temperature control needs
+    void updateACState() {
         if (!_sensors.isDataValid()) {
             return;
         }
 
         float indoorTemp = _sensors.getIndoorTemp();
-        float outdoorTemp = _weather.getCurrentTemp();
-        float indoorHumidity = _sensors.getIndoorHumidity();
-        float outdoorHumidity = _weather.getCurrentHumidity();
+        float tempError = abs(indoorTemp - Config::TARGET_INDOOR_TEMP);
 
-        // Enhanced energy estimation model based on HVAC thermodynamics
+        switch (_acState) {
+            case ACPowerState::OFF:
+                // AC stays off unless manually turned on
+                break;
 
-        // 1. Calculate heat load using sensible and latent heat components
-        float sensibleHeatLoad = calculateSensibleHeatLoad(indoorTemp, outdoorTemp);
-        float latentHeatLoad = calculateLatentHeatLoad(indoorHumidity, outdoorHumidity, indoorTemp, outdoorTemp);
-        float totalHeatLoad = sensibleHeatLoad + latentHeatLoad;
+            case ACPowerState::STARTING:
+                // Transition from starting to running after startup period
+                if (millis() - _lastStateChange >= Config::AC_STARTUP_TIME_MS) {
+                    _acState = ACPowerState::RUNNING;
+                    _lastStateChange = millis();
+                }
+                break;
 
-        // Store BTU/hr for reference
-        _heatLoadBTU = totalHeatLoad * Config::WATTS_TO_BTU_HR;
+            case ACPowerState::RUNNING:
+                // Switch to idle if target temperature is reached
+                if (tempError <= Config::TEMP_DEADBAND) {
+                    _acState = ACPowerState::IDLE;
+                    _lastStateChange = millis();
+                }
+                break;
 
-        // 2. Calculate Coefficient of Performance (COP) based on temperature difference
-        float tempDifference = abs(outdoorTemp - indoorTemp);
-        _currentCOP = calculateCOP(tempDifference, outdoorTemp);
+            case ACPowerState::IDLE:
+                // Return to running if temperature drifts too far from target
+                if (tempError > Config::TEMP_DEADBAND + 0.5) {
+                    _acState = ACPowerState::RUNNING;
+                    _lastStateChange = millis();
+                }
+                break;
+        }
+    }
 
-        // 3. Calculate actual power consumption
-        _estimatedPowerWatts = totalHeatLoad / _currentCOP;
+    void trackDailyUsage() {
+        // Reset daily stats at midnight (24 hour period)
+        if (millis() - _lastDayReset >= 86400000) { // 24 hours in milliseconds
+            _totalRuntimeToday = 0;
+            _dailyEnergyConsumed = 0.0;
+            _lastDayReset = millis();
+        }
 
-        // 4. Apply efficiency degradation factors
-        _estimatedPowerWatts *= calculateEfficiencyFactor(tempDifference, outdoorHumidity);
+        // Add current energy consumption to daily total
+        if (_acState != ACPowerState::OFF) {
+            float timeSinceLastCalc = (millis() - _lastCalculation) / 1000.0 / 3600.0; // hours
+            _dailyEnergyConsumed += _estimatedPowerWatts * timeSinceLastCalc / 1000.0; // kWh
+        }
+    }
 
-        // 5. Apply AC unit specific factors
-        _estimatedPowerWatts *= Config::AC_UNIT_EFFICIENCY_FACTOR;
+    void calculateEnergyUsage() {
+        _lastCalculation = millis();
 
-        // 6. Calculate EER (Energy Efficiency Ratio)
-        _currentEER = _heatLoadBTU / _estimatedPowerWatts;
+        // Calculate power consumption based on current AC state
+        if (_acState == ACPowerState::OFF) {
+            _estimatedPowerWatts = 0.0;
+            _currentCOP = 0.0;
+            _heatLoadBTU = 0.0;
+            _currentEER = 0.0;
+            _currentDutyCycle = 0.0;
+        } else {
+            // Only calculate if we have valid sensor data
+            if (!_sensors.isDataValid()) {
+                return;
+            }
 
-        // Ensure reasonable bounds
-        _estimatedPowerWatts = constrain(_estimatedPowerWatts, Config::AC_MIN_POWER_WATTS, Config::AC_MAX_POWER_WATTS);
+            float indoorTemp = _sensors.getIndoorTemp();
+            float outdoorTemp = _weather.getCurrentTemp();
+            float indoorHumidity = _sensors.getIndoorHumidity();
+            float outdoorHumidity = _weather.getCurrentHumidity();
 
-        // Calculate estimated duty cycle based on temperature control needs
-        float dutyCycle = calculateDutyCycle(indoorTemp, outdoorTemp);
-        _currentDutyCycle = dutyCycle;
+            // Calculate heat load (same as before)
+            float sensibleHeatLoad = calculateSensibleHeatLoad(indoorTemp, outdoorTemp);
+            float latentHeatLoad = calculateLatentHeatLoad(indoorHumidity, outdoorHumidity, indoorTemp, outdoorTemp);
+            float totalHeatLoad = sensibleHeatLoad + latentHeatLoad;
 
-        // Calculate daily energy consumption (kWh) with realistic duty cycle
-        _dailyEnergyKWh = (_estimatedPowerWatts * 24.0 * dutyCycle) / 1000.0;
+            _heatLoadBTU = totalHeatLoad * Config::WATTS_TO_BTU_HR;
 
-        // Update display with energy information
+            // Calculate COP
+            float tempDifference = abs(outdoorTemp - indoorTemp);
+            _currentCOP = calculateCOP(tempDifference, outdoorTemp);
+
+            // Calculate base power consumption
+            float basePower = totalHeatLoad / _currentCOP;
+            basePower *= calculateEfficiencyFactor(tempDifference, outdoorHumidity);
+            basePower *= Config::AC_UNIT_EFFICIENCY_FACTOR;
+
+            // Apply state-specific power multipliers
+            switch (_acState) {
+                case ACPowerState::STARTING:
+                    // High power draw during startup
+                    _estimatedPowerWatts = basePower * Config::AC_STARTUP_POWER_MULTIPLIER;
+                    break;
+                    
+                case ACPowerState::RUNNING:
+                    // Full power consumption
+                    _estimatedPowerWatts = basePower;
+                    break;
+                    
+                case ACPowerState::IDLE:
+                    // Only fan power consumption
+                    _estimatedPowerWatts = Config::AC_FAN_ONLY_POWER_WATTS;
+                    break;
+                    
+                default:
+                    _estimatedPowerWatts = 0.0;
+                    break;
+            }
+
+            // Ensure reasonable bounds
+            _estimatedPowerWatts = constrain(_estimatedPowerWatts, 0.0, Config::AC_MAX_POWER_WATTS);
+
+            // Calculate EER
+            _currentEER = (_estimatedPowerWatts > 0) ? _heatLoadBTU / _estimatedPowerWatts : 0.0;
+
+            // Calculate current duty cycle as percentage of day AC has been running
+            float todayHours = getTodaysRuntimeHours();
+            float dayProgress = (millis() - _lastDayReset) / 1000.0 / 3600.0; // hours since day reset
+            _currentDutyCycle = (dayProgress > 0) ? (todayHours / dayProgress) : 0.0;
+            _currentDutyCycle = constrain(_currentDutyCycle, 0.0, 1.0);
+        }
+
+        // Calculate projected daily energy consumption
+        float todayProjectedHours = getTodaysRuntimeHours();
+        if (_acState != ACPowerState::OFF) {
+            // Estimate remaining runtime for today based on current conditions
+            float avgPowerToday = (_dailyEnergyConsumed > 0 && todayProjectedHours > 0) ? 
+                                  (_dailyEnergyConsumed * 1000.0 / todayProjectedHours) : _estimatedPowerWatts;
+            
+            // Simple projection: assume similar usage pattern continues
+            float remainingHoursInDay = 24.0 - ((millis() - _lastDayReset) / 1000.0 / 3600.0);
+            float projectedAdditionalHours = remainingHoursInDay * _currentDutyCycle;
+            
+            _dailyEnergyKWh = _dailyEnergyConsumed + (avgPowerToday * projectedAdditionalHours / 1000.0);
+        } else {
+            // AC is off, just use energy consumed so far today
+            _dailyEnergyKWh = _dailyEnergyConsumed;
+        }
+
+        // Update display
         updateEnergyDisplay();
     }
 
     void updateEnergyDisplay() {
-        String energyLine = String((int)_estimatedPowerWatts) + "W  •  " +
-                            String(_dailyEnergyKWh, 1) + "kWh/day  •  " +
-                            "$" + String(getDailyCostEstimate(), 2) + "/day  •  " +
-                            String((int)(_currentDutyCycle * 100)) + "% duty";
+        String stateStr = "";
+        switch (_acState) {
+            case ACPowerState::OFF: stateStr = "OFF"; break;
+            case ACPowerState::STARTING: stateStr = "STARTING"; break;
+            case ACPowerState::RUNNING: stateStr = "RUNNING"; break;
+            case ACPowerState::IDLE: stateStr = "IDLE"; break;
+        }
+
+        String energyLine;
+        if (_acState == ACPowerState::OFF) {
+            energyLine = "AC OFF  •  Today: " + String(_dailyEnergyConsumed, 2) + "kWh  •  " +
+                        String(getTodaysRuntimeHours(), 1) + "h runtime";
+        } else {
+            energyLine = stateStr + "  •  " + String((int)_estimatedPowerWatts) + "W  •  " +
+                        "Today: " + String(_dailyEnergyConsumed, 2) + "kWh  •  " +
+                        String(getTodaysRuntimeHours(), 1) + "h  •  " +
+                        String((int)(_currentDutyCycle * 100)) + "%";
+        }
 
         _disp.updateEnergyEstimate(energyLine);
     }
@@ -174,49 +332,23 @@ private:
         return efficiencyFactor;
     }
 
-    // Calculate estimated duty cycle (fraction of time AC is running)
-    float calculateDutyCycle(float indoorTemp, float outdoorTemp) {
-        // Calculate how far we are from target temperature
-        float tempError = abs(indoorTemp - Config::TARGET_INDOOR_TEMP);
-        float outdoorTempDiff = abs(outdoorTemp - Config::TARGET_INDOOR_TEMP);
-
-        // Base duty cycle on outdoor conditions - hotter outside = more runtime needed
-        float baseDutyCycle = Config::BASE_DUTY_CYCLE;
-
-        // If outdoor temp is close to target, AC barely needs to run
-        if (outdoorTempDiff <= Config::DUTY_CYCLE_TEMP_THRESHOLD) {
-            return baseDutyCycle;
-        }
-
-        // Calculate load-based duty cycle
-        // More extreme outdoor temps = higher duty cycle
-        float loadDutyCycle = (outdoorTempDiff - Config::DUTY_CYCLE_TEMP_THRESHOLD) * Config::DUTY_CYCLE_LOAD_FACTOR;
-        loadDutyCycle = constrain(loadDutyCycle, 0.0, 0.7); // Max 70% for load
-
-        // Add correction based on how well we're maintaining target temp
-        float controlDutyCycle = 0.0;
-        if (tempError > 1.0) {
-            // If we're not maintaining target well, increase duty cycle
-            controlDutyCycle = (tempError - 1.0) * Config::DUTY_CYCLE_CONTROL_FACTOR;
-            controlDutyCycle = constrain(controlDutyCycle, 0.0, 0.3); // Max 30% correction
-        }
-
-        // Total duty cycle
-        float totalDutyCycle = baseDutyCycle + loadDutyCycle + controlDutyCycle;
-
-        // Ensure reasonable bounds
-        return constrain(totalDutyCycle, Config::MIN_DUTY_CYCLE, Config::MAX_DUTY_CYCLE);
-    }
-
     DisplayManager &_disp;
     SensorHelper &_sensors;
     WeatherHelper &_weather;
 
+    // AC State tracking
+    ACPowerState _acState;
+    uint32_t _lastStateChange = 0;
+    uint32_t _totalRuntimeToday = 0;        // Total runtime today in seconds
+    uint32_t _lastDayReset = 0;             // Last time daily stats were reset
+    float _dailyEnergyConsumed = 0.0;       // Energy consumed today in kWh
+
+    // Energy calculation variables
     uint32_t _lastCalculation = 0;
     float _estimatedPowerWatts = 0.0;
     float _dailyEnergyKWh = 0.0;
     float _currentCOP = 0.0;
     float _heatLoadBTU = 0.0;
     float _currentEER = 0.0;
-    float _currentDutyCycle = 0.0;
+    float _currentDutyCycle = 0.0;          // Kept for compatibility, but now calculated differently
 };

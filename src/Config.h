@@ -102,6 +102,12 @@ namespace Config {
     constexpr float DUTY_CYCLE_LOAD_FACTOR = 0.035;  // Duty cycle increase per degree of outdoor temp difference
     constexpr float DUTY_CYCLE_CONTROL_FACTOR = 0.1; // Duty cycle correction per degree of indoor temp error
 
+    // AC State Management parameters
+    constexpr uint32_t AC_STARTUP_TIME_MS = 5000;       // 5 seconds startup time
+    constexpr float AC_STARTUP_POWER_MULTIPLIER = 1.8;  // Power multiplier during startup (80% more power)
+    constexpr float AC_FAN_ONLY_POWER_WATTS = 150.0;    // Power consumption when only fan is running
+    constexpr float TEMP_DEADBAND = 0.5;                // °C - Temperature deadband for state switching
+
     /* Alert Thresholds ------------------------------------------ */
     // Temperature thresholds
     constexpr float TEMP_HIGH_THRESHOLD = 30.0;            // °C - High temperature alert
