@@ -73,6 +73,12 @@ public:
     void updateEnergyEstimate(const String &line) {
         updateTextElement("main.energyEstimate", line);
     }
+    void updateEnergyEstimate1(const String &line) {
+        updateTextElement("main.energyEst1", line);
+    }
+    void updateEnergyEstimate2(const String &line) {
+        updateTextElement("main.energyEst2", line);
+    }
     void updateAlerts(const String &line) {
         updateTextElement("main.alerts", line);
     }

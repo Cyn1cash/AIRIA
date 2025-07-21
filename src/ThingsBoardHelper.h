@@ -66,30 +66,6 @@ public:
     // Get connection status (for HTTP, always true if WiFi is connected)
     bool isConnected() { return WiFi.status() == WL_CONNECTED; }
 
-    // Test method with minimal JSON
-    void testMinimalUpload() {
-        String testJson = "{\"temperature\":25.0}";
-        Serial.println("Testing minimal JSON: " + testJson);
-        if (sendHttpTelemetry(testJson)) {
-            Serial.println("Minimal test: SUCCESS");
-        } else {
-            Serial.println("Minimal test: FAILED - " + _lastError);
-        }
-    }
-
-    // Force upload now (useful for testing)
-    void forceUpload() {
-        if (Config::THINGSBOARD_USE_CHUNKED_UPLOAD) {
-            _currentChunk = 0;
-            _lastUpload = 0;
-        } else {
-            _lastUpload = 0;
-        }
-    }
-
-    // Get current chunk info (for debugging)
-    uint8_t getCurrentChunk() const { return _currentChunk; }
-
 private:
     void uploadDataChunked() {
         _lastChunkTime = millis();
@@ -159,10 +135,6 @@ private:
         String jsonString;
         serializeJson(doc, jsonString);
 
-        Serial.println("Sending " + chunkName + " (Chunk " + String(_currentChunk) + "): " + jsonString);
-        Serial.print("JSON length: ");
-        Serial.println(jsonString.length());
-
         // Send chunk
         bool success = sendHttpTelemetry(jsonString);
 
@@ -176,14 +148,12 @@ private:
                 _lastUploadSuccessful = true;
                 _lastError = "";
                 _disp.showThingsBoardSuccess();
-                Serial.println("All chunks uploaded successfully!");
             }
         } else {
             // Chunk failed, reset and try again next cycle
             _currentChunk = 0;
             _lastUploadSuccessful = false;
             _disp.showThingsBoardError(_lastError);
-            Serial.println("Chunk upload failed, resetting cycle");
         }
     }
 
@@ -247,10 +217,6 @@ private:
         String jsonString;
         serializeJson(doc, jsonString);
 
-        Serial.println("Sending JSON via HTTP: " + jsonString);
-        Serial.print("JSON length: ");
-        Serial.println(jsonString.length());
-
         // Send via HTTP to ThingsBoard
         if (sendHttpTelemetry(jsonString)) {
             _lastSuccessfulUpload = millis();
@@ -270,19 +236,13 @@ private:
         // Use the complete URL from configuration
         String url = String(Config::THINGSBOARD_HTTP_URL);
 
-        Serial.println("HTTP URL: " + url);
-
         _httpClient.begin(_wifiClient, url);
         _httpClient.addHeader("Content-Type", "application/json");
 
         int httpResponseCode = _httpClient.POST(jsonData);
 
-        Serial.print("HTTP Response code: ");
-        Serial.println(httpResponseCode);
-
         if (httpResponseCode > 0) {
             String response = _httpClient.getString();
-            Serial.println("HTTP Response Body: " + response); // Always show response for debugging
 
             _httpClient.end();
 

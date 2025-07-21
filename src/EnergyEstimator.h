@@ -254,18 +254,19 @@ private:
             break;
         }
 
-        String energyLine;
+        String energyLine1, energyLine2;
         if (_acState == ACPowerState::OFF) {
-            energyLine = "AC OFF  •  Today: " + String(_dailyEnergyConsumed, 2) + "kWh  •  " +
-                         String(getTodaysRuntimeHours(), 1) + "h runtime";
+            energyLine1 = "AC OFF  •  Today: " + String(_dailyEnergyConsumed, 2) + "kWh";
+            energyLine2 = "Runtime: " + String(getTodaysRuntimeHours(), 1) + "h";
         } else {
-            energyLine = stateStr + "  •  " + String((int)_estimatedPowerWatts) + "W  •  " +
-                         "Today: " + String(_dailyEnergyConsumed, 2) + "kWh  •  " +
-                         String(getTodaysRuntimeHours(), 1) + "h  •  " +
-                         String((int)(_currentDutyCycle * Config::PERCENTAGE_MULTIPLIER)) + "%";
+            energyLine1 = stateStr + "  •  " + String((int)_estimatedPowerWatts) + "W  •  " +
+                          String((int)(_currentDutyCycle * Config::PERCENTAGE_MULTIPLIER)) + "%";
+            energyLine2 = "Today: " + String(_dailyEnergyConsumed, 2) + "kWh  •  " +
+                          String(getTodaysRuntimeHours(), 1) + "h runtime";
         }
 
-        _disp.updateEnergyEstimate(energyLine);
+        _disp.updateEnergyEstimate1(energyLine1);
+        _disp.updateEnergyEstimate2(energyLine2);
     }
 
     // Calculate sensible heat load based on temperature difference
