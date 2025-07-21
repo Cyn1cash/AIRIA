@@ -58,9 +58,9 @@ namespace Config {
     constexpr bool BUZZER_ENABLED = true;               // Enable/disable buzzer functionality
     constexpr uint8_t BUZZER_PIN = 12;                  // GPIO 12 (D6 on NodeMCU) for active-high buzzer
     constexpr uint32_t ALERT_CHECK_INTERVAL_MS = 2'000; // Check for alerts every 2 seconds
-    constexpr uint16_t BUZZER_BEEP_DURATION_MS = 200;   // Individual beep duration (shorter for consistency)
-    constexpr uint16_t BUZZER_BEEP_INTERVAL_MS = 300;   // Interval between beeps (shorter for better timing)
-    constexpr uint8_t BUZZER_BEEP_COUNT = 3;            // Number of beeps per alert cycle
+    constexpr uint16_t BUZZER_BEEP_DURATION_MS = 500;   // Individual beep duration
+    constexpr uint16_t BUZZER_BEEP_INTERVAL_MS = 0;     // Interval between beeps
+    constexpr uint8_t BUZZER_BEEP_COUNT = 255;          // Maximum beeps per alert cycle
 
     /* CO Sensor (MQ-9) ------------------------------------------ */
     constexpr uint16_t MQ9_ANALOG_MIN = 0;         // Minimum analog reading (clean air)
