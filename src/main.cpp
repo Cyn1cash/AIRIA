@@ -27,16 +27,21 @@ void setup() {
 }
 
 void loop() {
+    // Wait for Wi-Fi connection before initializing other components
     if (wifi.poll()) {
+        // Initialize all components once Wi-Fi is connected
         timeManager.begin();
         sensors.begin();
         weather.begin();
         energyEstimator.begin();
         thingsBoard.begin();
         alertManager.begin();
-        delay(3000);
+
+        delay(Config::COMPONENT_INIT_DELAY_MS); // Allow components to initialize
         display.showMain();
     }
+
+    // Poll all components continuously
     timeManager.poll();
     weather.poll();
     sensors.poll();         // Poll sensors continuously

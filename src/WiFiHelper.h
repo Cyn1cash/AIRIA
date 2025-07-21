@@ -43,7 +43,7 @@ private:
 
         const uint32_t t0 = millis();
         while (WiFi.status() != WL_CONNECTED && millis() - t0 < Config::WIFI_TIMEOUT_MS) {
-            delay(250);
+            delay(Config::WIFI_CONNECT_DELAY_MS);
         }
         _connecting = false;
 

@@ -44,7 +44,7 @@ public:
     void setACOff() {
         if (_acState != ACPowerState::OFF) {
             // Add runtime to today's total before turning off
-            _totalRuntimeToday += (millis() - _lastStateChange) / 1000; // seconds
+            _totalRuntimeToday += (millis() - _lastStateChange) / Config::MILLIS_TO_SECONDS; // seconds
             _acState = ACPowerState::OFF;
             _lastStateChange = millis();
         }
@@ -57,9 +57,9 @@ public:
     float getTodaysRuntimeHours() const {
         uint32_t currentRuntime = _totalRuntimeToday;
         if (_acState != ACPowerState::OFF) {
-            currentRuntime += (millis() - _lastStateChange) / 1000;
+            currentRuntime += (millis() - _lastStateChange) / Config::MILLIS_TO_SECONDS;
         }
-        return currentRuntime / 3600.0;
+        return currentRuntime / Config::SECONDS_TO_HOURS;
     }
 
     // Get estimated power consumption in watts (0 if AC is off)
@@ -122,7 +122,7 @@ private:
 
         case ACPowerState::IDLE:
             // Return to running if temperature drifts too far from target
-            if (tempError > Config::TEMP_DEADBAND + 0.5) {
+            if (tempError > Config::TEMP_DEADBAND + Config::TEMP_DEADBAND_TOLERANCE) {
                 _acState = ACPowerState::RUNNING;
                 _lastStateChange = millis();
             }
@@ -132,7 +132,7 @@ private:
 
     void trackDailyUsage() {
         // Reset daily stats at midnight (24 hour period)
-        if (millis() - _lastDayReset >= 86400000) { // 24 hours in milliseconds
+        if (millis() - _lastDayReset >= Config::MILLISECONDS_PER_DAY) {
             _totalRuntimeToday = 0;
             _dailyEnergyConsumed = 0.0;
             _lastDayReset = millis();
@@ -140,8 +140,8 @@ private:
 
         // Add current energy consumption to daily total
         if (_acState != ACPowerState::OFF) {
-            float timeSinceLastCalc = (millis() - _lastCalculation) / 1000.0 / 3600.0; // hours
-            _dailyEnergyConsumed += _estimatedPowerWatts * timeSinceLastCalc / 1000.0; // kWh
+            float timeSinceLastCalc = (millis() - _lastCalculation) / Config::MILLIS_TO_SECONDS / Config::SECONDS_TO_HOURS; // hours
+            _dailyEnergyConsumed += _estimatedPowerWatts * timeSinceLastCalc / Config::WATTS_TO_KILOWATTS;                  // kWh
         }
     }
 
@@ -212,7 +212,7 @@ private:
 
             // Calculate current duty cycle as percentage of day AC has been running
             float todayHours = getTodaysRuntimeHours();
-            float dayProgress = (millis() - _lastDayReset) / 1000.0 / 3600.0; // hours since day reset
+            float dayProgress = (millis() - _lastDayReset) / Config::MILLIS_TO_SECONDS / Config::SECONDS_TO_HOURS; // hours since day reset
             _currentDutyCycle = (dayProgress > 0) ? (todayHours / dayProgress) : 0.0;
             _currentDutyCycle = constrain(_currentDutyCycle, 0.0, 1.0);
         }
@@ -221,13 +221,13 @@ private:
         float todayProjectedHours = getTodaysRuntimeHours();
         if (_acState != ACPowerState::OFF) {
             // Estimate remaining runtime for today based on current conditions
-            float avgPowerToday = (_dailyEnergyConsumed > 0 && todayProjectedHours > 0) ? (_dailyEnergyConsumed * 1000.0 / todayProjectedHours) : _estimatedPowerWatts;
+            float avgPowerToday = (_dailyEnergyConsumed > 0 && todayProjectedHours > 0) ? (_dailyEnergyConsumed * Config::WATTS_TO_KILOWATTS / todayProjectedHours) : _estimatedPowerWatts;
 
             // Simple projection: assume similar usage pattern continues
-            float remainingHoursInDay = 24.0 - ((millis() - _lastDayReset) / 1000.0 / 3600.0);
+            float remainingHoursInDay = Config::HOURS_PER_DAY - ((millis() - _lastDayReset) / Config::MILLIS_TO_SECONDS / Config::SECONDS_TO_HOURS);
             float projectedAdditionalHours = remainingHoursInDay * _currentDutyCycle;
 
-            _dailyEnergyKWh = _dailyEnergyConsumed + (avgPowerToday * projectedAdditionalHours / 1000.0);
+            _dailyEnergyKWh = _dailyEnergyConsumed + (avgPowerToday * projectedAdditionalHours / Config::WATTS_TO_KILOWATTS);
         } else {
             // AC is off, just use energy consumed so far today
             _dailyEnergyKWh = _dailyEnergyConsumed;
@@ -262,7 +262,7 @@ private:
             energyLine = stateStr + "  •  " + String((int)_estimatedPowerWatts) + "W  •  " +
                          "Today: " + String(_dailyEnergyConsumed, 2) + "kWh  •  " +
                          String(getTodaysRuntimeHours(), 1) + "h  •  " +
-                         String((int)(_currentDutyCycle * 100)) + "%";
+                         String((int)(_currentDutyCycle * Config::PERCENTAGE_MULTIPLIER)) + "%";
         }
 
         _disp.updateEnergyEstimate(energyLine);

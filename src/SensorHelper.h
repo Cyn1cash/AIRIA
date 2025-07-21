@@ -2,7 +2,6 @@
 #include "Config.h"
 #include "DisplayManager.h"
 #include <DHT.h>
-#include <DHT_U.h>
 
 class SensorHelper {
 public:
@@ -134,7 +133,7 @@ private:
             _coPPM = pow(10, ((log10(ratio) - Config::MQ9_CO_CURVE_OFFSET) / Config::MQ9_CO_CURVE_SLOPE));
             // Clamp to reasonable range
             if (_coPPM < 0) _coPPM = 0;
-            if (_coPPM > 1000) _coPPM = 1000;
+            if (_coPPM > Config::MQ9_MAX_PPM) _coPPM = Config::MQ9_MAX_PPM;
         } else {
             _coPPM = 0; // Clean air
         }

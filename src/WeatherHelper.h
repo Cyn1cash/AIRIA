@@ -51,19 +51,18 @@ private:
 
     double calculateDistance(double lat1, double lon1, double lat2, double lon2) {
         // Haversine formula for calculating distance between two points on Earth
-        const double R = 6371.0; // Earth's radius in kilometers
         const double dlat = (lat2 - lat1) * M_PI / 180.0;
         const double dlon = (lon2 - lon1) * M_PI / 180.0;
         const double a = sin(dlat / 2) * sin(dlat / 2) +
                          cos(lat1 * M_PI / 180.0) * cos(lat2 * M_PI / 180.0) *
                              sin(dlon / 2) * sin(dlon / 2);
         const double c = 2 * atan2(sqrt(a), sqrt(1 - a));
-        return R * c;
+        return Config::EARTH_RADIUS_KM * c;
     }
 
     String findClosestStation(const JsonArray &stations) {
         String closestStationId = "";
-        double minDistance = 999999.0;
+        double minDistance = Config::MAX_DISTANCE_SEARCH;
 
         for (JsonVariant station : stations) {
             // NEA APIs sometimes use "location" and sometimes "labelLocation"
@@ -131,7 +130,7 @@ private:
         }
 
         http.addHeader("Accept", "application/json");
-        http.setTimeout(15000); // 15 second timeout for HTTPS
+        http.setTimeout(Config::HTTP_TIMEOUT_MS); // HTTP timeout for HTTPS
 
         int httpCode = http.GET();
 
@@ -139,7 +138,7 @@ private:
             String payload = http.getString();
             http.end();
 
-            DynamicJsonDocument doc(8192);
+            DynamicJsonDocument doc(Config::JSON_DOC_SIZE);
             DeserializationError error = deserializeJson(doc, payload);
 
             if (!error && doc["code"] == 0) {
@@ -170,7 +169,7 @@ private:
         }
 
         http.addHeader("Accept", "application/json");
-        http.setTimeout(15000);
+        http.setTimeout(Config::HTTP_TIMEOUT_MS);
 
         int httpCode = http.GET();
 
@@ -178,7 +177,7 @@ private:
             String payload = http.getString();
             http.end();
 
-            DynamicJsonDocument doc(8192);
+            DynamicJsonDocument doc(Config::JSON_DOC_SIZE);
             DeserializationError error = deserializeJson(doc, payload);
 
             if (!error && doc["code"] == 0) {

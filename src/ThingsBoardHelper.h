@@ -5,22 +5,45 @@
 #include "SensorHelper.h"
 #include "WeatherHelper.h"
 #include <ArduinoJson.h>
-#include <ESP8266HTTPClient.h>
 #include <ESP8266WiFi.h>
-#include <WiFiClient.h>
+#include <PubSubClient.h>
+
+// ThingsBoard error messages
+namespace ThingsBoardErrors {
+    constexpr char MQTT_NOT_CONNECTED[] = "MQTT not connected";
+    constexpr char MQTT_PUBLISH_FAILED[] = "MQTT publish failed";
+    constexpr char MQTT_CONNECTION_FAILED[] = "MQTT connection failed, rc=";
+    constexpr char INVALID_SENSOR_DATA[] = "Invalid sensor data";
+}
 
 class ThingsBoardHelper {
 public:
     explicit ThingsBoardHelper(DisplayManager &disp, SensorHelper &sensors,
                                WeatherHelper &weather, EnergyEstimator &energy)
-        : _disp(disp), _sensors(sensors), _weather(weather), _energy(energy) {}
+        : _wifiClient(), _mqttClient(_wifiClient), _disp(disp), _sensors(sensors),
+          _weather(weather), _energy(energy) {}
 
     void begin() {
-        // ThingsBoard helper initialized - no startup sequence needed
+        _mqttClient.setServer(Config::THINGSBOARD_MQTT_SERVER, Config::THINGSBOARD_MQTT_PORT);
+        _lastReconnectAttempt = 0;
     }
 
     void poll() {
-        if (millis() - _lastUpload >= Config::THINGSBOARD_UPLOAD_INTERVAL_MS) {
+        // Handle MQTT connection
+        if (!_mqttClient.connected()) {
+            if (millis() - _lastReconnectAttempt >= Config::MQTT_RECONNECT_DELAY_MS) {
+                _lastReconnectAttempt = millis();
+                if (reconnect()) {
+                    _lastReconnectAttempt = 0;
+                }
+            }
+        } else {
+            _mqttClient.loop();
+        }
+
+        // Upload data at regular intervals
+        if (_mqttClient.connected() &&
+            millis() - _lastUpload >= Config::THINGSBOARD_UPLOAD_INTERVAL_MS) {
             uploadData();
         }
     }
@@ -34,13 +57,25 @@ public:
     // Get last upload error message
     String getLastError() const { return _lastError; }
 
+    // Get MQTT connection status
+    bool isMqttConnected() { return _mqttClient.connected(); }
+
 private:
+    bool reconnect() {
+        if (_mqttClient.connect(Config::THINGSBOARD_CLIENT_ID, Config::THINGSBOARD_ACCESS_TOKEN, "")) {
+            _lastError = "";
+            return true;
+        } else {
+            _lastError = String(ThingsBoardErrors::MQTT_CONNECTION_FAILED) + String(_mqttClient.state());
+            return false;
+        }
+    }
     void uploadData() {
         _lastUpload = millis();
 
         // Only upload if we have valid sensor data
         if (!_sensors.isDataValid()) {
-            _lastError = "Invalid sensor data";
+            _lastError = ThingsBoardErrors::INVALID_SENSOR_DATA;
             _lastUploadSuccessful = false;
             return;
         }
@@ -88,8 +123,8 @@ private:
         String jsonString;
         serializeJson(doc, jsonString);
 
-        // Send HTTP POST request
-        if (sendToThingsBoard(jsonString)) {
+        // Publish to ThingsBoard via MQTT
+        if (publishToThingsBoard(jsonString)) {
             _lastSuccessfulUpload = millis();
             _lastUploadSuccessful = true;
             _lastError = "";
@@ -98,42 +133,27 @@ private:
             _disp.showThingsBoardSuccess();
         } else {
             _lastUploadSuccessful = false;
-            // Error message is set in sendToThingsBoard
+            // Error message is set in publishToThingsBoard
             _disp.showThingsBoardError(_lastError);
         }
     }
 
-    bool sendToThingsBoard(const String &jsonData) {
-        WiFiClient client;
-        HTTPClient http;
-
-        if (!http.begin(client, Config::THINGSBOARD_URL)) {
-            _lastError = "Failed to begin HTTP connection";
+    bool publishToThingsBoard(const String &jsonData) {
+        if (!_mqttClient.connected()) {
+            _lastError = ThingsBoardErrors::MQTT_NOT_CONNECTED;
             return false;
         }
 
-        http.addHeader("Content-Type", "application/json");
-        http.setTimeout(10000); // 10 second timeout
-
-        int httpCode = http.POST(jsonData);
-
-        if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_CREATED) {
-            String response = http.getString();
-            http.end();
+        if (_mqttClient.publish(Config::THINGSBOARD_TELEMETRY_TOPIC, jsonData.c_str(), Config::THINGSBOARD_QOS)) {
             return true;
         } else {
-            _lastError = "HTTP Error: " + String(httpCode);
-            if (httpCode > 0) {
-                String response = http.getString();
-                if (response.length() > 0) {
-                    _lastError += " - " + response.substring(0, 50); // Limit error message length
-                }
-            }
-            http.end();
+            _lastError = ThingsBoardErrors::MQTT_PUBLISH_FAILED;
             return false;
         }
     }
 
+    WiFiClient _wifiClient;
+    PubSubClient _mqttClient;
     DisplayManager &_disp;
     SensorHelper &_sensors;
     WeatherHelper &_weather;
@@ -141,6 +161,7 @@ private:
 
     uint32_t _lastUpload = 0;
     uint32_t _lastSuccessfulUpload = 0;
+    uint32_t _lastReconnectAttempt = 0;
     bool _lastUploadSuccessful = false;
     String _lastError = "";
 };

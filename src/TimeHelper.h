@@ -11,8 +11,8 @@ public:
         _disp.showTimeSyncing();
 
         configTime(Config::GMT_OFFSET_SEC, 0, Config::NTP_SERVER);
-        while (time(nullptr) < 100'000)
-            delay(100);
+        while (time(nullptr) < Config::NTP_MIN_EPOCH_TIME)
+            delay(Config::NTP_SYNC_DELAY_MS);
 
         _disp.showTimeSynced();
         _lastClockUpdate = millis();
@@ -35,10 +35,12 @@ private:
         const char *ampm = "AM";
         if (hour >= 12) {
             ampm = "PM";
-            if (hour > 12)
+            if (hour > 12) {
                 hour -= 12;
-        } else if (hour == 0)
+            }
+        } else if (hour == 0) {
             hour = 12;
+        }
         snprintf(out, len, "%02d:%02d:%02d %s", hour, tm->tm_min, tm->tm_sec, ampm);
     }
 
