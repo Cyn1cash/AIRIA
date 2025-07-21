@@ -39,8 +39,9 @@ namespace Config {
     /* ThingsBoard ----------------------------------------------- */
     constexpr char THINGSBOARD_MQTT_SERVER[] = "demo.thingsboard.io";
     constexpr int THINGSBOARD_MQTT_PORT = 1883;
-    constexpr char THINGSBOARD_ACCESS_TOKEN[] = "AYWEm8zZNwkdV9RppN8j";
-    constexpr char THINGSBOARD_CLIENT_ID[] = "ESP8266Client";
+    constexpr char THINGSBOARD_CLIENT_ID[] = "d2078soymd4t1qv8zcx7";
+    constexpr char THINGSBOARD_USERNAME[] = "wksgv7r69edc4no3f0hu";
+    constexpr char THINGSBOARD_PASSWORD[] = "ewuh3zxcnraud484sh0l";
     constexpr char THINGSBOARD_TELEMETRY_TOPIC[] = "v1/devices/me/telemetry";
     constexpr uint8_t THINGSBOARD_QOS = 1;                      // QoS level for MQTT messages
     constexpr uint32_t THINGSBOARD_UPLOAD_INTERVAL_MS = 30'000; // Upload every 30 seconds

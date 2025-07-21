@@ -62,7 +62,7 @@ public:
 
 private:
     bool reconnect() {
-        if (_mqttClient.connect(Config::THINGSBOARD_CLIENT_ID, Config::THINGSBOARD_ACCESS_TOKEN, "")) {
+        if (_mqttClient.connect(Config::THINGSBOARD_CLIENT_ID, Config::THINGSBOARD_USERNAME, Config::THINGSBOARD_PASSWORD)) {
             _lastError = "";
             return true;
         } else {
