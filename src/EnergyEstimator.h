@@ -89,6 +89,64 @@ public:
     // Get current duty cycle (percentage of day AC has been running)
     float getCurrentDutyCycle() const { return _currentDutyCycle; }
 
+    // Get current heat load in watts (for monitoring auto control decisions)
+    float getCurrentHeatLoadWatts() const {
+        if (!_sensors.isDataValid() || isnan(_weather.getCurrentTemp()) || isnan(_weather.getCurrentHumidity())) {
+            return 0.0;
+        }
+
+        float indoorTemp = _sensors.getIndoorTemp();
+        float outdoorTemp = _weather.getCurrentTemp();
+        float indoorHumidity = _sensors.getIndoorHumidity();
+        float outdoorHumidity = _weather.getCurrentHumidity();
+
+        float sensibleLoad = calculateSensibleHeatLoad(indoorTemp, outdoorTemp);
+        float latentLoad = calculateLatentHeatLoad(indoorHumidity, outdoorHumidity, indoorTemp, outdoorTemp);
+        return sensibleLoad + latentLoad;
+    }
+
+    // Check if AC would auto-start based on current conditions
+    bool wouldAutoStart() const {
+        return getCurrentHeatLoadWatts() > Config::AUTO_ON_HEAT_LOAD_THRESHOLD;
+    }
+
+    // Check if AC would auto-stop based on current conditions
+    bool wouldAutoStop() const {
+        return getCurrentHeatLoadWatts() < Config::AUTO_OFF_HEAT_LOAD_THRESHOLD;
+    }
+
+    // Calculate sensible heat load based on temperature difference (public for monitoring)
+    float calculateSensibleHeatLoad(float indoorTemp, float outdoorTemp) const {
+        // Sensible heat load = U * A * ΔT
+        // Where U = overall heat transfer coefficient, A = surface area, ΔT = temperature difference
+        float tempDifference = abs(outdoorTemp - indoorTemp);
+
+        // Simplified calculation using room characteristics
+        float sensibleLoad = Config::ROOM_HEAT_TRANSFER_COEFF *
+                             Config::ROOM_SURFACE_AREA *
+                             tempDifference;
+
+        return sensibleLoad;
+    }
+
+    // Calculate latent heat load based on humidity difference (public for monitoring)
+    float calculateLatentHeatLoad(float indoorHumidity, float outdoorHumidity, float indoorTemp, float outdoorTemp) const {
+        // Latent heat load considers moisture removal
+        float humidityDiff = abs(outdoorHumidity - indoorHumidity);
+
+        // Higher temperatures increase latent heat capacity
+        float avgTemp = (indoorTemp + outdoorTemp) / 2.0;
+        float tempFactor = 1.0 + (avgTemp - 20.0) * Config::LATENT_HEAT_TEMP_FACTOR;
+
+        // Latent load = humidity difference × air volume × latent heat factor
+        float latentLoad = humidityDiff *
+                           Config::ROOM_AIR_VOLUME *
+                           Config::LATENT_HEAT_FACTOR *
+                           tempFactor;
+
+        return latentLoad;
+    }
+
 private:
     // Update AC state based on temperature control needs
     void updateACState() {
@@ -101,7 +159,23 @@ private:
 
         switch (_acState) {
         case ACPowerState::OFF:
-            // AC stays off unless manually turned on
+            // Auto turn on if heat load exceeds threshold
+            if (!isnan(_weather.getCurrentTemp()) && !isnan(_weather.getCurrentHumidity())) {
+                float outdoorTemp = _weather.getCurrentTemp();
+                float indoorHumidity = _sensors.getIndoorHumidity();
+                float outdoorHumidity = _weather.getCurrentHumidity();
+
+                // Calculate current heat load to determine if AC should turn on
+                float sensibleLoad = calculateSensibleHeatLoad(indoorTemp, outdoorTemp);
+                float latentLoad = calculateLatentHeatLoad(indoorHumidity, outdoorHumidity, indoorTemp, outdoorTemp);
+                float totalHeatLoad = sensibleLoad + latentLoad;
+
+                // Auto turn on if total heat load exceeds threshold
+                if (totalHeatLoad > Config::AUTO_ON_HEAT_LOAD_THRESHOLD) {
+                    _acState = ACPowerState::STARTING;
+                    _lastStateChange = millis();
+                }
+            }
             break;
 
         case ACPowerState::STARTING:
@@ -125,6 +199,26 @@ private:
             if (tempError > Config::TEMP_DEADBAND + Config::TEMP_DEADBAND_TOLERANCE) {
                 _acState = ACPowerState::RUNNING;
                 _lastStateChange = millis();
+            }
+            // Auto turn off if heat load is very low and AC has been running for minimum time
+            else if (!isnan(_weather.getCurrentTemp()) && !isnan(_weather.getCurrentHumidity()) &&
+                     (millis() - _lastStateChange >= Config::AUTO_OFF_MIN_TIME_MS)) {
+                float outdoorTemp = _weather.getCurrentTemp();
+                float indoorHumidity = _sensors.getIndoorHumidity();
+                float outdoorHumidity = _weather.getCurrentHumidity();
+
+                // Calculate current heat load
+                float sensibleLoad = calculateSensibleHeatLoad(indoorTemp, outdoorTemp);
+                float latentLoad = calculateLatentHeatLoad(indoorHumidity, outdoorHumidity, indoorTemp, outdoorTemp);
+                float totalHeatLoad = sensibleLoad + latentLoad;
+
+                // Auto turn off if heat load is below lower threshold (hysteresis)
+                if (totalHeatLoad < Config::AUTO_OFF_HEAT_LOAD_THRESHOLD) {
+                    // Add runtime to today's total before turning off
+                    _totalRuntimeToday += (millis() - _lastStateChange) / Config::MILLIS_TO_SECONDS;
+                    _acState = ACPowerState::OFF;
+                    _lastStateChange = millis();
+                }
             }
             break;
         }
@@ -267,38 +361,6 @@ private:
 
         _disp.updateEnergyEstimate1(energyLine1);
         _disp.updateEnergyEstimate2(energyLine2);
-    }
-
-    // Calculate sensible heat load based on temperature difference
-    float calculateSensibleHeatLoad(float indoorTemp, float outdoorTemp) {
-        // Sensible heat load = U * A * ΔT
-        // Where U = overall heat transfer coefficient, A = surface area, ΔT = temperature difference
-        float tempDifference = abs(outdoorTemp - indoorTemp);
-
-        // Simplified calculation using room characteristics
-        float sensibleLoad = Config::ROOM_HEAT_TRANSFER_COEFF *
-                             Config::ROOM_SURFACE_AREA *
-                             tempDifference;
-
-        return sensibleLoad;
-    }
-
-    // Calculate latent heat load based on humidity difference
-    float calculateLatentHeatLoad(float indoorHumidity, float outdoorHumidity, float indoorTemp, float outdoorTemp) {
-        // Latent heat load considers moisture removal
-        float humidityDiff = abs(outdoorHumidity - indoorHumidity);
-
-        // Higher temperatures increase latent heat capacity
-        float avgTemp = (indoorTemp + outdoorTemp) / 2.0;
-        float tempFactor = 1.0 + (avgTemp - 20.0) * Config::LATENT_HEAT_TEMP_FACTOR;
-
-        // Latent load = humidity difference × air volume × latent heat factor
-        float latentLoad = humidityDiff *
-                           Config::ROOM_AIR_VOLUME *
-                           Config::LATENT_HEAT_FACTOR *
-                           tempFactor;
-
-        return latentLoad;
     }
 
     // Calculate Coefficient of Performance (COP) based on conditions

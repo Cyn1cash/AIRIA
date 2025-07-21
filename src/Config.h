@@ -142,11 +142,14 @@ namespace Config {
     constexpr float DUTY_CYCLE_CONTROL_FACTOR = 0.1; // Duty cycle correction per degree of indoor temp error
 
     /* AC State Management --------------------------------------- */
-    constexpr uint32_t AC_STARTUP_TIME_MS = 5000;      // 5 seconds startup time
-    constexpr float AC_STARTUP_POWER_MULTIPLIER = 1.8; // Power multiplier during startup (80% more power)
-    constexpr float AC_FAN_ONLY_POWER_WATTS = 150.0;   // Power consumption when only fan is running
-    constexpr float TEMP_DEADBAND = 0.5;               // °C - Temperature deadband for state switching
-    constexpr float TEMP_DEADBAND_TOLERANCE = 0.5;     // °C - Additional tolerance for reactivation
+    constexpr uint32_t AC_STARTUP_TIME_MS = 5000;         // 5 seconds startup time
+    constexpr float AC_STARTUP_POWER_MULTIPLIER = 1.8;    // Power multiplier during startup (80% more power)
+    constexpr float AC_FAN_ONLY_POWER_WATTS = 150.0;      // Power consumption when only fan is running
+    constexpr float TEMP_DEADBAND = 0.5;                  // °C - Temperature deadband for state switching
+    constexpr float TEMP_DEADBAND_TOLERANCE = 0.5;        // °C - Additional tolerance for reactivation
+    constexpr float AUTO_ON_HEAT_LOAD_THRESHOLD = 800.0;  // W - Heat load threshold for automatic AC turn-on
+    constexpr float AUTO_OFF_HEAT_LOAD_THRESHOLD = 400.0; // W - Heat load threshold for automatic AC turn-off (hysteresis)
+    constexpr uint32_t AUTO_OFF_MIN_TIME_MS = 300000;     // 5 minutes - Minimum time before auto turn-off
 
     // =======================================================================
     // ALERT THRESHOLDS
