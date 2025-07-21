@@ -39,6 +39,8 @@ namespace Config {
     /* ThingsBoard ----------------------------------------------- */
     constexpr char THINGSBOARD_HTTP_URL[] = "http://demo.thingsboard.io/api/v1/4pz51pefyj8yig0m0f4w/telemetry"; // Complete HTTP URL
     constexpr uint32_t THINGSBOARD_UPLOAD_INTERVAL_MS = 60'000;                                                 // Upload every 1 minute (reduced for rate limits)
+    constexpr bool THINGSBOARD_USE_CHUNKED_UPLOAD = true;                                                       // Split data into multiple smaller uploads
+    constexpr uint32_t THINGSBOARD_CHUNK_DELAY_MS = 2000;                                                       // Delay between chunks (2 seconds)
 
     // =======================================================================
     // HARDWARE & SENSORS
@@ -53,7 +55,7 @@ namespace Config {
     constexpr uint8_t MAX_SENSOR_FAILURES = 5;    // Max consecutive failed readings before reinit
 
     /* Buzzer / Alerts ------------------------------------------- */
-    constexpr bool BUZZER_ENABLED = false;              // Enable/disable buzzer functionality
+    constexpr bool BUZZER_ENABLED = true;               // Enable/disable buzzer functionality
     constexpr uint8_t BUZZER_PIN = 12;                  // GPIO 12 (D6 on NodeMCU) for active-high buzzer
     constexpr uint32_t ALERT_CHECK_INTERVAL_MS = 2'000; // Check for alerts every 2 seconds
     constexpr uint16_t BUZZER_BEEP_DURATION_MS = 200;   // Individual beep duration (shorter for consistency)
