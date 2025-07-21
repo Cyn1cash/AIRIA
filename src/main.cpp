@@ -7,6 +7,7 @@
 #include "TimeHelper.h"
 #include "WeatherHelper.h"
 #include "WiFiHelper.h"
+#include <NexTouch.h>
 
 /* ---------- Singletons ---------- */
 DisplayManager display;
@@ -17,6 +18,11 @@ SensorHelper sensors(display);
 EnergyEstimator energyEstimator(display, sensors, weather);
 ThingsBoardHelper thingsBoard(display, sensors, weather, energyEstimator);
 AlertManager alertManager(display, sensors, energyEstimator, weather);
+
+/* ---------- Nextion touch events ---------- */
+NexTouch *nex_listen_list[] = {
+    AlertManager::getBuzzerButton(),
+    NULL};
 
 /* ---------- Arduino lifecycle ---------- */
 void setup() {
@@ -48,4 +54,7 @@ void loop() {
     energyEstimator.poll(); // Calculate energy usage
     thingsBoard.poll();     // Upload data to ThingsBoard
     alertManager.poll();    // Check for alerts and manage buzzer
+
+    // Handle Nextion touch events
+    nexLoop(nex_listen_list);
 }
