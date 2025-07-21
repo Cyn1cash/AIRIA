@@ -9,12 +9,14 @@ The AIRIA system now uses a discrete AC state management approach instead of con
 The system tracks four distinct AC states:
 
 ### 1. OFF
+
 - AC is completely turned off
 - Power consumption: 0 watts
 - No energy usage tracking
 - User must manually turn AC on
 
 ### 2. STARTING
+
 - AC has just been turned on
 - High power draw due to compressor startup
 - Duration: 5 seconds (configurable)
@@ -22,12 +24,14 @@ The system tracks four distinct AC states:
 - Automatically transitions to RUNNING state
 
 ### 3. RUNNING  
+
 - AC is actively cooling the space
 - Full power consumption based on thermal load
 - Compressor and fan both operating
 - Switches to IDLE when target temperature is reached
 
 ### 4. IDLE
+
 - AC is on but target temperature is maintained
 - Only fan is running (compressor off)  
 - Low power consumption (~150W)
@@ -36,17 +40,20 @@ The system tracks four distinct AC states:
 ## Key Features
 
 ### Realistic Usage Tracking
+
 - Tracks actual runtime hours per day
-- Accumulates real energy consumption 
+- Accumulates real energy consumption
 - Handles periods when AC is completely off
 - Provides both actual and projected daily usage
 
 ### Smart State Transitions
+
 - Temperature deadband prevents frequent cycling
 - Automatic state management based on thermal conditions
 - Manual on/off control for realistic user behavior
 
 ### Accurate Energy Estimates
+
 - Zero consumption when AC is off
 - Startup energy spikes included
 - Fan-only power consumption during idle periods
@@ -55,6 +62,7 @@ The system tracks four distinct AC states:
 ## Usage
 
 ### Manual Control
+
 ```cpp
 // Turn AC on (will start in STARTING state)
 energyEstimator.setACOn();
@@ -64,6 +72,7 @@ energyEstimator.setACOff();
 ```
 
 ### State Monitoring
+
 ```cpp
 // Check current state
 ACPowerState state = energyEstimator.getACState();
@@ -79,7 +88,9 @@ float projectedKWh = energyEstimator.getDailyEnergyKWh();
 ```
 
 ### Display Information
+
 The display now shows:
+
 - Current AC state (OFF/STARTING/RUNNING/IDLE)
 - Current power consumption (0W when off)
 - Today's actual energy consumption

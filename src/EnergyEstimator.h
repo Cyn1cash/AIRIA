@@ -5,10 +5,10 @@
 #include "WeatherHelper.h"
 
 enum class ACPowerState {
-    OFF,        // AC is completely off
-    STARTING,   // AC just turned on, high power draw
-    RUNNING,    // AC is actively cooling
-    IDLE        // AC is on but compressor is off (fan only)
+    OFF,      // AC is completely off
+    STARTING, // AC just turned on, high power draw
+    RUNNING,  // AC is actively cooling
+    IDLE      // AC is on but compressor is off (fan only)
 };
 
 class EnergyEstimator {
@@ -34,14 +34,14 @@ public:
     }
 
     // Manual AC control methods
-    void setACOn() { 
+    void setACOn() {
         if (_acState == ACPowerState::OFF) {
             _acState = ACPowerState::STARTING;
             _lastStateChange = millis();
         }
     }
-    
-    void setACOff() { 
+
+    void setACOff() {
         if (_acState != ACPowerState::OFF) {
             // Add runtime to today's total before turning off
             _totalRuntimeToday += (millis() - _lastStateChange) / 1000; // seconds
@@ -52,14 +52,14 @@ public:
 
     // Get current AC state
     ACPowerState getACState() const { return _acState; }
-    
+
     // Get today's total runtime in hours
-    float getTodaysRuntimeHours() const { 
+    float getTodaysRuntimeHours() const {
         uint32_t currentRuntime = _totalRuntimeToday;
         if (_acState != ACPowerState::OFF) {
             currentRuntime += (millis() - _lastStateChange) / 1000;
         }
-        return currentRuntime / 3600.0; 
+        return currentRuntime / 3600.0;
     }
 
     // Get estimated power consumption in watts (0 if AC is off)
@@ -100,33 +100,33 @@ private:
         float tempError = abs(indoorTemp - Config::TARGET_INDOOR_TEMP);
 
         switch (_acState) {
-            case ACPowerState::OFF:
-                // AC stays off unless manually turned on
-                break;
+        case ACPowerState::OFF:
+            // AC stays off unless manually turned on
+            break;
 
-            case ACPowerState::STARTING:
-                // Transition from starting to running after startup period
-                if (millis() - _lastStateChange >= Config::AC_STARTUP_TIME_MS) {
-                    _acState = ACPowerState::RUNNING;
-                    _lastStateChange = millis();
-                }
-                break;
+        case ACPowerState::STARTING:
+            // Transition from starting to running after startup period
+            if (millis() - _lastStateChange >= Config::AC_STARTUP_TIME_MS) {
+                _acState = ACPowerState::RUNNING;
+                _lastStateChange = millis();
+            }
+            break;
 
-            case ACPowerState::RUNNING:
-                // Switch to idle if target temperature is reached
-                if (tempError <= Config::TEMP_DEADBAND) {
-                    _acState = ACPowerState::IDLE;
-                    _lastStateChange = millis();
-                }
-                break;
+        case ACPowerState::RUNNING:
+            // Switch to idle if target temperature is reached
+            if (tempError <= Config::TEMP_DEADBAND) {
+                _acState = ACPowerState::IDLE;
+                _lastStateChange = millis();
+            }
+            break;
 
-            case ACPowerState::IDLE:
-                // Return to running if temperature drifts too far from target
-                if (tempError > Config::TEMP_DEADBAND + 0.5) {
-                    _acState = ACPowerState::RUNNING;
-                    _lastStateChange = millis();
-                }
-                break;
+        case ACPowerState::IDLE:
+            // Return to running if temperature drifts too far from target
+            if (tempError > Config::TEMP_DEADBAND + 0.5) {
+                _acState = ACPowerState::RUNNING;
+                _lastStateChange = millis();
+            }
+            break;
         }
     }
 
@@ -184,24 +184,24 @@ private:
 
             // Apply state-specific power multipliers
             switch (_acState) {
-                case ACPowerState::STARTING:
-                    // High power draw during startup
-                    _estimatedPowerWatts = basePower * Config::AC_STARTUP_POWER_MULTIPLIER;
-                    break;
-                    
-                case ACPowerState::RUNNING:
-                    // Full power consumption
-                    _estimatedPowerWatts = basePower;
-                    break;
-                    
-                case ACPowerState::IDLE:
-                    // Only fan power consumption
-                    _estimatedPowerWatts = Config::AC_FAN_ONLY_POWER_WATTS;
-                    break;
-                    
-                default:
-                    _estimatedPowerWatts = 0.0;
-                    break;
+            case ACPowerState::STARTING:
+                // High power draw during startup
+                _estimatedPowerWatts = basePower * Config::AC_STARTUP_POWER_MULTIPLIER;
+                break;
+
+            case ACPowerState::RUNNING:
+                // Full power consumption
+                _estimatedPowerWatts = basePower;
+                break;
+
+            case ACPowerState::IDLE:
+                // Only fan power consumption
+                _estimatedPowerWatts = Config::AC_FAN_ONLY_POWER_WATTS;
+                break;
+
+            default:
+                _estimatedPowerWatts = 0.0;
+                break;
             }
 
             // Ensure reasonable bounds
@@ -221,13 +221,12 @@ private:
         float todayProjectedHours = getTodaysRuntimeHours();
         if (_acState != ACPowerState::OFF) {
             // Estimate remaining runtime for today based on current conditions
-            float avgPowerToday = (_dailyEnergyConsumed > 0 && todayProjectedHours > 0) ? 
-                                  (_dailyEnergyConsumed * 1000.0 / todayProjectedHours) : _estimatedPowerWatts;
-            
+            float avgPowerToday = (_dailyEnergyConsumed > 0 && todayProjectedHours > 0) ? (_dailyEnergyConsumed * 1000.0 / todayProjectedHours) : _estimatedPowerWatts;
+
             // Simple projection: assume similar usage pattern continues
             float remainingHoursInDay = 24.0 - ((millis() - _lastDayReset) / 1000.0 / 3600.0);
             float projectedAdditionalHours = remainingHoursInDay * _currentDutyCycle;
-            
+
             _dailyEnergyKWh = _dailyEnergyConsumed + (avgPowerToday * projectedAdditionalHours / 1000.0);
         } else {
             // AC is off, just use energy consumed so far today
@@ -241,21 +240,29 @@ private:
     void updateEnergyDisplay() {
         String stateStr = "";
         switch (_acState) {
-            case ACPowerState::OFF: stateStr = "OFF"; break;
-            case ACPowerState::STARTING: stateStr = "STARTING"; break;
-            case ACPowerState::RUNNING: stateStr = "RUNNING"; break;
-            case ACPowerState::IDLE: stateStr = "IDLE"; break;
+        case ACPowerState::OFF:
+            stateStr = "OFF";
+            break;
+        case ACPowerState::STARTING:
+            stateStr = "STARTING";
+            break;
+        case ACPowerState::RUNNING:
+            stateStr = "RUNNING";
+            break;
+        case ACPowerState::IDLE:
+            stateStr = "IDLE";
+            break;
         }
 
         String energyLine;
         if (_acState == ACPowerState::OFF) {
             energyLine = "AC OFF  •  Today: " + String(_dailyEnergyConsumed, 2) + "kWh  •  " +
-                        String(getTodaysRuntimeHours(), 1) + "h runtime";
+                         String(getTodaysRuntimeHours(), 1) + "h runtime";
         } else {
             energyLine = stateStr + "  •  " + String((int)_estimatedPowerWatts) + "W  •  " +
-                        "Today: " + String(_dailyEnergyConsumed, 2) + "kWh  •  " +
-                        String(getTodaysRuntimeHours(), 1) + "h  •  " +
-                        String((int)(_currentDutyCycle * 100)) + "%";
+                         "Today: " + String(_dailyEnergyConsumed, 2) + "kWh  •  " +
+                         String(getTodaysRuntimeHours(), 1) + "h  •  " +
+                         String((int)(_currentDutyCycle * 100)) + "%";
         }
 
         _disp.updateEnergyEstimate(energyLine);
@@ -339,9 +346,9 @@ private:
     // AC State tracking
     ACPowerState _acState;
     uint32_t _lastStateChange = 0;
-    uint32_t _totalRuntimeToday = 0;        // Total runtime today in seconds
-    uint32_t _lastDayReset = 0;             // Last time daily stats were reset
-    float _dailyEnergyConsumed = 0.0;       // Energy consumed today in kWh
+    uint32_t _totalRuntimeToday = 0;  // Total runtime today in seconds
+    uint32_t _lastDayReset = 0;       // Last time daily stats were reset
+    float _dailyEnergyConsumed = 0.0; // Energy consumed today in kWh
 
     // Energy calculation variables
     uint32_t _lastCalculation = 0;
@@ -350,5 +357,5 @@ private:
     float _currentCOP = 0.0;
     float _heatLoadBTU = 0.0;
     float _currentEER = 0.0;
-    float _currentDutyCycle = 0.0;          // Kept for compatibility, but now calculated differently
+    float _currentDutyCycle = 0.0; // Kept for compatibility, but now calculated differently
 };
