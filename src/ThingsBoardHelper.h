@@ -119,9 +119,11 @@ private:
         doc["timestamp"] = millis();
         doc["sensor_last_reading"] = _sensors.getLastReadingTime();
 
-        // Convert to string
+        // Convert to string with proper formatting
         String jsonString;
         serializeJson(doc, jsonString);
+
+        Serial.println("Sending JSON: " + jsonString);
 
         // Publish to ThingsBoard via MQTT
         if (publishToThingsBoard(jsonString)) {
@@ -144,7 +146,8 @@ private:
             return false;
         }
 
-        if (_mqttClient.publish(Config::THINGSBOARD_TELEMETRY_TOPIC, jsonData.c_str(), Config::THINGSBOARD_QOS)) {
+        // Use QoS 0 for better reliability during testing
+        if (_mqttClient.publish(Config::THINGSBOARD_TELEMETRY_TOPIC, jsonData.c_str(), false)) {
             return true;
         } else {
             _lastError = ThingsBoardErrors::MQTT_PUBLISH_FAILED;
