@@ -177,8 +177,8 @@ private:
     }
 
     void updateDisplay() {
-        String alertsString = getActiveAlertsString();
-        _disp.updateAlerts(alertsString);
+        // Alerts are now handled by individual status objects in the new frontend
+        // No central alert display needed
     }
 
     void handleBuzzer() {

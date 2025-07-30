@@ -67,39 +67,72 @@ public:
         return _indoorHumidity - outdoorHumidity;
     }
 
-    // Get formatted DHT22 sensor data string for display
-    String getFormattedData() const {
+    // New methods for individual object updates
+    String getIndoorTempString() const {
         if (!_dataValid) {
-            return "DHT22 Error";
+            return "Temperature: --.-°C";
         }
-        return "Indoor: " + String(_indoorTemp, 1) + "°C  " + String((int)_indoorHumidity) + "% RH";
+        return "Temperature: " + String(_indoorTemp, 1) + "°C";
     }
 
-    // Get formatted CO sensor data string for display
-    String getFormattedCoData() const {
+    String getIndoorRhString() const {
+        if (!_dataValid) {
+            return "Relative Humidity: --%";
+        }
+        return "Relative Humidity: " + String((int)_indoorHumidity) + "%";
+    }
+
+    String getIndoorStatusString() const {
+        if (!_dataValid) {
+            return "Status: Sensor Error";
+        }
+
+        // Check temperature thresholds
+        if (_indoorTemp > Config::TEMP_HIGH_THRESHOLD) {
+            return "Status: Temp too high";
+        } else if (_indoorTemp < Config::TEMP_LOW_THRESHOLD) {
+            return "Status: Temp too low";
+        }
+
+        // Check humidity thresholds
+        if (_indoorHumidity > Config::HUMIDITY_HIGH_THRESHOLD) {
+            return "Status: RH too high";
+        } else if (_indoorHumidity < Config::HUMIDITY_LOW_THRESHOLD) {
+            return "Status: RH too low";
+        }
+
+        return "Status: Normal";
+    }
+
+    String getCoValueString() const {
         if (_coSensorWarmedUp) {
-            String result = "CO: " + String((int)_coPPM) + " ppm";
-            // Optionally show if digital threshold is also triggered
-            if (!_coDigitalReading) { // Active-low: LOW = detected
-                result += " (high)";
-            }
-            return result;
+            return "CO: " + String((int)_coPPM) + " ppm";
         } else {
-            return "CO: Warming up...";
+            return "CO: --- ppm";
         }
     }
 
-    // Get formatted ozone sensor data string for display
-    String getFormattedOzoneData() const {
-        if (_ozoneSensorWarmedUp) {
-            // Active-low logic: LOW = detected (LED ON), HIGH = normal (LED OFF)
-            if (!_ozoneDigitalReading) { // LOW = detected
-                return "Ozone: Detected";
-            } else {
-                return "Ozone: Normal";
-            }
+    String getCoStatusString() const {
+        if (!_coSensorWarmedUp) {
+            return "Status: Warming up";
+        }
+
+        if (!_coDigitalReading) { // Active-low: LOW = detected
+            return "Status: Detected";
         } else {
-            return "Ozone: Warming up...";
+            return "Status: Safe";
+        }
+    }
+
+    String getOzoneStatusString() const {
+        if (!_ozoneSensorWarmedUp) {
+            return "Ozone Status: Warming up";
+        }
+
+        if (!_ozoneDigitalReading) { // Active-low: LOW = detected
+            return "Ozone Status: Detected";
+        } else {
+            return "Ozone Status: Safe";
         }
     }
 
@@ -153,9 +186,13 @@ private:
             }
 
             // Still update sensor displays even if DHT22 fails
-            _disp.updateCoSensor(getFormattedCoData());
-            _disp.updateCoDetails(_coVoltage, _coAnalogReading, _coDigitalReading);
-            _disp.updateOzoneSensor(getFormattedOzoneData());
+            // Update individual objects for new frontend
+            _disp.updateIndoorTemp(getIndoorTempString());
+            _disp.updateIndoorRh(getIndoorRhString());
+            _disp.updateIndoorStatus(getIndoorStatusString());
+            _disp.updateCoValue(getCoValueString());
+            _disp.updateCoStatus(getCoStatusString());
+            _disp.updateOzoneStatus(getOzoneStatusString());
             return;
         }
 
@@ -167,10 +204,13 @@ private:
         _lastValidReading = millis();
 
         // Update display with sensor data
-        _disp.updateDhtSensor(getFormattedData());
-        _disp.updateCoSensor(getFormattedCoData());
-        _disp.updateCoDetails(_coVoltage, _coAnalogReading, _coDigitalReading);
-        _disp.updateOzoneSensor(getFormattedOzoneData());
+        // Update individual objects for new frontend
+        _disp.updateIndoorTemp(getIndoorTempString());
+        _disp.updateIndoorRh(getIndoorRhString());
+        _disp.updateIndoorStatus(getIndoorStatusString());
+        _disp.updateCoValue(getCoValueString());
+        _disp.updateCoStatus(getCoStatusString());
+        _disp.updateOzoneStatus(getOzoneStatusString());
 
         // DHT22 readings logged
     }

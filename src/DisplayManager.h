@@ -58,29 +58,40 @@ public:
     void updateClock(const char *hhmmss) {
         updateTextElement("time", hhmmss);
     }
-    void updateWeather(const String &line) {
-        updateTextElement("main.weather", line);
+
+    /* ---------- New specific object updates ---------- */
+    void updateOutdoorTemp(const String &text) {
+        updateTextElement("main.outTemp", text);
     }
-    void updateDhtSensor(const String &line) {
-        updateTextElement("main.dhtSensor", line);
+    void updateOutdoorRh(const String &text) {
+        updateTextElement("main.outRh", text);
     }
-    void updateCoSensor(const String &line) {
-        updateTextElement("main.coSensor", line);
+    void updateIndoorTemp(const String &text) {
+        updateTextElement("main.inTemp", text);
     }
-    void updateOzoneSensor(const String &line) {
-        updateTextElement("main.ozoneSensor", line);
+    void updateIndoorRh(const String &text) {
+        updateTextElement("main.inRh", text);
     }
-    void updateEnergyEstimate(const String &line) {
-        updateTextElement("main.energyEstimate", line);
+    void updateIndoorStatus(const String &text) {
+        updateTextElement("main.inStatus", text);
     }
-    void updateEnergyEstimate1(const String &line) {
-        updateTextElement("main.energyEst1", line);
+    void updateCurrentDraw(const String &text) {
+        updateTextElement("main.currentDraw", text);
     }
-    void updateEnergyEstimate2(const String &line) {
-        updateTextElement("main.energyEst2", line);
+    void updateDailyEstimate(const String &text) {
+        updateTextElement("main.dailyEst", text);
     }
-    void updateAlerts(const String &line) {
-        updateTextElement("main.alerts", line);
+    void updateEnergyStatus(const String &text) {
+        updateTextElement("main.energyStatus", text);
+    }
+    void updateCoValue(const String &text) {
+        updateTextElement("main.coVal", text);
+    }
+    void updateCoStatus(const String &text) {
+        updateTextElement("main.coStatus", text);
+    }
+    void updateOzoneStatus(const String &text) {
+        updateTextElement("main.ozoneStatus", text);
     }
 
     /* -------- Details page --------- */

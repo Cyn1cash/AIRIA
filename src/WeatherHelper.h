@@ -32,6 +32,23 @@ public:
     float getCurrentTemp() const { return _currentTemp; }
     float getCurrentHumidity() const { return _currentHumidity; }
 
+    // New methods for individual object updates
+    String getOutdoorTempString() const {
+        if (!isnan(_currentTemp)) {
+            return "Temperature: " + String(_currentTemp, 1) + "°C";
+        } else {
+            return "Temperature: --.-°C";
+        }
+    }
+
+    String getOutdoorRhString() const {
+        if (!isnan(_currentHumidity)) {
+            return "Relative Humidity: " + String((int)_currentHumidity) + "%";
+        } else {
+            return "Relative Humidity: --%";
+        }
+    }
+
 private:
     void fetch() {
         _lastFetch = millis();
@@ -192,26 +209,9 @@ private:
     }
 
     void updateDisplay() {
-        String line = "";
-
-        // Build outdoor temperature and humidity string
-        if (!isnan(_currentTemp)) {
-            line += String(_currentTemp, 1) + "°C";
-        }
-
-        if (!isnan(_currentHumidity)) {
-            if (line.length() > 0) line += "  ";
-            line += String((int)_currentHumidity) + "% RH";
-        }
-
-        // Add "Outdoor:" prefix
-        if (line.length() > 0) {
-            line = "Outdoor: " + line;
-        } else {
-            line = "Weather data unavailable";
-        }
-
-        _disp.updateWeather(line);
+        // Update individual objects for new frontend
+        _disp.updateOutdoorTemp(getOutdoorTempString());
+        _disp.updateOutdoorRh(getOutdoorRhString());
     }
 
     DisplayManager &_disp;

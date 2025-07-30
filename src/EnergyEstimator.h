@@ -110,6 +110,29 @@ public:
         return getCurrentHeatLoadWatts() > Config::AUTO_ON_HEAT_LOAD_THRESHOLD;
     }
 
+    // New methods for individual object updates
+    String getCurrentDrawString() const {
+        return "Current Usage: " + String((int)_estimatedPowerWatts) + " W";
+    }
+
+    String getDailyEstimateString() const {
+        return "Daily: " + String(_dailyEnergyKWh, 2) + " kWh/day";
+    }
+
+    String getEnergyStatusString() const {
+        // Check power threshold
+        if (_estimatedPowerWatts > Config::POWER_HIGH_THRESHOLD) {
+            return "Status: Power High";
+        }
+
+        // Check daily cost threshold
+        if (getDailyCostEstimate() > Config::DAILY_COST_HIGH_THRESHOLD) {
+            return "Status: Cost High";
+        }
+
+        return "Status: Normal";
+    }
+
     // Check if AC would auto-stop based on current conditions
     bool wouldAutoStop() const {
         return getCurrentHeatLoadWatts() < Config::AUTO_OFF_HEAT_LOAD_THRESHOLD;
@@ -540,19 +563,10 @@ private:
             break;
         }
 
-        String energyLine1, energyLine2;
-        if (_acState == ACPowerState::OFF) {
-            energyLine1 = "AC OFF  •  Today: " + String(_dailyEnergyConsumed, 2) + "kWh";
-            energyLine2 = "Runtime: " + String(getTodaysRuntimeHours(), 1) + "h";
-        } else {
-            energyLine1 = stateStr + "  •  " + String((int)_estimatedPowerWatts) + "W  •  " +
-                          String((int)(_currentDutyCycle * Config::PERCENTAGE_MULTIPLIER)) + "%";
-            energyLine2 = "Today: " + String(_dailyEnergyConsumed, 2) + "kWh  •  " +
-                          String(getTodaysRuntimeHours(), 1) + "h runtime";
-        }
-
-        _disp.updateEnergyEstimate1(energyLine1);
-        _disp.updateEnergyEstimate2(energyLine2);
+        // Update individual objects for new frontend
+        _disp.updateCurrentDraw(getCurrentDrawString());
+        _disp.updateDailyEstimate(getDailyEstimateString());
+        _disp.updateEnergyStatus(getEnergyStatusString());
     }
 
     // Calculate Coefficient of Performance (COP) based on conditions
