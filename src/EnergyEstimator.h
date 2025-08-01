@@ -120,6 +120,11 @@ public:
     }
 
     String getEnergyStatusString() const {
+        // Check if AC is off first
+        if (_acState == ACPowerState::OFF) {
+            return "Status: AC Off";
+        }
+
         // Check power threshold
         if (_estimatedPowerWatts > Config::POWER_HIGH_THRESHOLD) {
             return "Status: Power High";
