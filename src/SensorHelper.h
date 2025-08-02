@@ -117,7 +117,8 @@ public:
             return "Status: Warming up";
         }
 
-        if (!_coDigitalReading) { // Active-low: LOW = detected
+        // Check both digital pin (for immediate detection) and PPM threshold (for alert consistency)
+        if (!_coDigitalReading || _coPPM > Config::CO_HIGH_THRESHOLD) { // Active-low: LOW = detected OR high PPM
             return "Status: Detected";
         } else {
             return "Status: Safe";
@@ -127,6 +128,10 @@ public:
     String getOzoneStatusString() const {
         if (!_ozoneSensorWarmedUp) {
             return "Ozone Status: Warming up";
+        }
+
+        if (!Config::OZONE_ALERT_ON_DETECTION) {
+            return "Ozone Status: Disabled";
         }
 
         if (!_ozoneDigitalReading) { // Active-low: LOW = detected
