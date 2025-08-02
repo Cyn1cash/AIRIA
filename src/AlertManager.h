@@ -173,12 +173,18 @@ private:
         if (_sensors.isCoSensorWarmedUp()) {
             float coPPM = _sensors.getCoPPM();
             checkAndUpdateAlert(AlertType::CO_HIGH, coPPM > Config::CO_HIGH_THRESHOLD, currentTime);
+        } else {
+            // If sensor is not warmed up, ensure CO alert is cleared
+            checkAndUpdateAlert(AlertType::CO_HIGH, false, currentTime);
         }
 
         // Check ozone alerts
         if (_sensors.isOzoneSensorWarmedUp() && Config::OZONE_ALERT_ON_DETECTION) {
             bool ozoneDetected = _sensors.isOzoneDetected(); // Use active-low corrected method
             checkAndUpdateAlert(AlertType::OZONE_DETECTED, ozoneDetected, currentTime);
+        } else {
+            // If sensor is not warmed up or detection is disabled, ensure ozone alert is cleared
+            checkAndUpdateAlert(AlertType::OZONE_DETECTED, false, currentTime);
         }
 
         // Check energy alerts
