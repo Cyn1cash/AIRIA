@@ -212,6 +212,9 @@ private:
         _disp.updateCoStatus(getCoStatusString());
         _disp.updateOzoneStatus(getOzoneStatusString());
 
+        // Update details page with raw CO sensor data
+        _disp.updateCoDetails(_coVoltage, _coAnalogReading, _coDigitalReading);
+
         // DHT22 readings logged
     }
 

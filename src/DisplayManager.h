@@ -54,7 +54,18 @@ public:
     }
 
     /* ---------- Main page ---------- */
-    void showMain() { sendCmd("page main"); }
+    void showMain() {
+        sendCmd("page main");
+        initializeStatusIndicators();
+    }
+
+    void initializeStatusIndicators() {
+        // Initialize all indicators to normal state (hide all warning indicators)
+        hide("warning");          // Outdoor weather
+        hide("indoorIndWarning"); // Indoor conditions
+        hide("energyIndWarning"); // Energy usage
+        hide("airIndWarning");    // Air quality
+    }
     void updateClock(const char *hhmmss) {
         updateTextElement("time", hhmmss);
     }
@@ -94,6 +105,39 @@ public:
         updateTextElement("main.ozoneStatus", text);
     }
 
+    /* -------- Status Indicators --------- */
+    void updateOutdoorIndicator(bool isNormal) {
+        if (isNormal) {
+            hide("warning"); // Hide frowny face for outdoor weather
+        } else {
+            show("warning"); // Show frowny face for outdoor weather
+        }
+    }
+
+    void updateIndoorIndicator(bool isNormal) {
+        if (isNormal) {
+            hide("indoorIndWarning"); // Hide frowny face for indoor conditions
+        } else {
+            show("indoorIndWarning"); // Show frowny face for indoor conditions
+        }
+    }
+
+    void updateEnergyIndicator(bool isNormal) {
+        if (isNormal) {
+            hide("energyIndWarning"); // Hide frowny face for energy usage
+        } else {
+            show("energyIndWarning"); // Show frowny face for energy usage
+        }
+    }
+
+    void updateAirQualityIndicator(bool isNormal) {
+        if (isNormal) {
+            hide("airIndWarning"); // Hide frowny face for air quality
+        } else {
+            show("airIndWarning"); // Show frowny face for air quality
+        }
+    }
+
     /* -------- Details page --------- */
     void showLocation(double lat, double lon) {
         updateTextElement("details.latitude", String("Latitude: ") + String(lat, 15));
@@ -103,6 +147,9 @@ public:
         String digitalState = digitalReading ? "HIGH" : "LOW";
         updateTextElement("details.coDetails",
                           String("CO: ") + String(voltage, 2) + "V (ADC: " + String(analogReading) + ") (D: " + digitalState + ")");
+    }
+    void updateEstimatedCurrentDraw(const String &value) {
+        updateTextElement("details.estCurrentDraw", value);
     }
 
     /* -------- Heat Load page ------- */

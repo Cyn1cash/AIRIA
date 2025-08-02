@@ -98,7 +98,43 @@ public:
         return count;
     }
 
+    // Check if specific alert types are active for sector status indicators
+    bool isOutdoorWeatherNormal() const {
+        // Outdoor weather is normal if no temperature difference alerts are active
+        return !isAlertActive(AlertType::TEMP_DIFFERENCE_HIGH) &&
+               !isAlertActive(AlertType::HUMIDITY_DIFFERENCE_HIGH);
+    }
+
+    bool isIndoorConditionsNormal() const {
+        // Indoor conditions are normal if temperature and humidity are within thresholds
+        return !isAlertActive(AlertType::TEMP_HIGH) &&
+               !isAlertActive(AlertType::TEMP_LOW) &&
+               !isAlertActive(AlertType::HUMIDITY_HIGH) &&
+               !isAlertActive(AlertType::HUMIDITY_LOW);
+    }
+
+    bool isEnergyUsageNormal() const {
+        // Energy usage is normal if power and daily cost are within thresholds
+        return !isAlertActive(AlertType::POWER_HIGH) &&
+               !isAlertActive(AlertType::DAILY_COST_HIGH);
+    }
+
+    bool isAirQualityNormal() const {
+        // Air quality is normal if CO and ozone are within safe levels
+        return !isAlertActive(AlertType::CO_HIGH) &&
+               !isAlertActive(AlertType::OZONE_DETECTED);
+    }
+
 private:
+    // Helper method to check if a specific alert type is active
+    bool isAlertActive(AlertType type) const {
+        for (const auto &alert : _alerts) {
+            if (alert.type == type && alert.active) {
+                return true;
+            }
+        }
+        return false;
+    }
     void initializeAlerts() {
         _alerts[0] = {AlertType::TEMP_HIGH, "High Temp", false, 0};
         _alerts[1] = {AlertType::TEMP_LOW, "Low Temp", false, 0};
@@ -177,8 +213,11 @@ private:
     }
 
     void updateDisplay() {
-        // Alerts are now handled by individual status objects in the new frontend
-        // No central alert display needed
+        // Update status indicators based on current alert states
+        _disp.updateOutdoorIndicator(isOutdoorWeatherNormal());
+        _disp.updateIndoorIndicator(isIndoorConditionsNormal());
+        _disp.updateEnergyIndicator(isEnergyUsageNormal());
+        _disp.updateAirQualityIndicator(isAirQualityNormal());
     }
 
     void handleBuzzer() {

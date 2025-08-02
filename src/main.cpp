@@ -25,6 +25,39 @@ void setup() {
     display.begin();
 
     wifi.begin();
+
+    // Print available serial commands
+    Serial.println("=== AIRIA Serial Commands ===");
+    Serial.println("recommendedConfig - Get configuration recommendations");
+    Serial.println("heatLoadDetails - Get detailed heat load analysis");
+    Serial.println("heatLoadSummary - Get current heat load summary");
+    Serial.println("help - Show this command list");
+    Serial.println("==============================");
+}
+
+void handleSerialCommands() {
+    if (Serial.available()) {
+        String command = Serial.readStringUntil('\n');
+        command.trim(); // Remove whitespace and newlines
+
+        if (command == "recommendedConfig") {
+            Serial.println("\n" + energyEstimator.getConfigRecommendations());
+        } else if (command == "heatLoadDetails") {
+            Serial.println("\n" + energyEstimator.getHeatLoadDetails());
+        } else if (command == "heatLoadSummary") {
+            Serial.println("\n" + energyEstimator.getHeatLoadSummary());
+        } else if (command == "help") {
+            Serial.println("\n=== AIRIA Serial Commands ===");
+            Serial.println("recommendedConfig - Get configuration recommendations");
+            Serial.println("heatLoadDetails - Get detailed heat load analysis");
+            Serial.println("heatLoadSummary - Get current heat load summary");
+            Serial.println("help - Show this command list");
+            Serial.println("==============================");
+        } else if (command.length() > 0) {
+            Serial.println("Unknown command: " + command);
+            Serial.println("Type 'help' for available commands");
+        }
+    }
 }
 
 void loop() {
@@ -49,4 +82,7 @@ void loop() {
     energyEstimator.poll(); // Calculate energy usage
     thingsBoard.poll();     // Upload data to ThingsBoard
     alertManager.poll();    // Check for alerts and manage buzzer
+
+    // Handle serial commands for debugging
+    handleSerialCommands();
 }
