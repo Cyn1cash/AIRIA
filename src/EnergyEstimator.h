@@ -95,10 +95,13 @@ public:
             return 0.0;
         }
 
-        auto conditions = getCurrentEnvironmentalConditions();
-        float sensibleLoad = calculateSensibleHeatLoad(conditions.indoorTemp, conditions.outdoorTemp);
-        float latentLoad = calculateLatentHeatLoad(conditions.indoorHumidity, conditions.outdoorHumidity,
-                                                   conditions.indoorTemp, conditions.outdoorTemp);
+        float indoorTemp = _sensors.getIndoorTemp();
+        float outdoorTemp = _weather.getCurrentTemp();
+        float indoorHumidity = _sensors.getIndoorHumidity();
+        float outdoorHumidity = _weather.getCurrentHumidity();
+
+        float sensibleLoad = calculateSensibleHeatLoad(indoorTemp, outdoorTemp);
+        float latentLoad = calculateLatentHeatLoad(indoorHumidity, outdoorHumidity, indoorTemp, outdoorTemp);
         return sensibleLoad + latentLoad;
     }
 
@@ -133,11 +136,6 @@ public:
         }
 
         return "Status: Normal";
-    }
-
-    String getEstimatedDrawString() const {
-        float estimatedPower = calculateEstimatedPowerForCurrentConditions();
-        return "Est. Draw: " + String((int)estimatedPower) + " W";
     }
 
     // Check if AC would auto-stop based on current conditions
@@ -477,18 +475,26 @@ private:
                 return;
             }
 
-            // Get current environmental conditions
-            auto conditions = getCurrentEnvironmentalConditions();
+            float indoorTemp = _sensors.getIndoorTemp();
+            float outdoorTemp = _weather.getCurrentTemp();
+            float indoorHumidity = _sensors.getIndoorHumidity();
+            float outdoorHumidity = _weather.getCurrentHumidity();
 
-            // Calculate heat load for BTU display
-            float totalHeatLoad = getCurrentHeatLoadWatts();
+            // Calculate heat load (same as before)
+            float sensibleHeatLoad = calculateSensibleHeatLoad(indoorTemp, outdoorTemp);
+            float latentHeatLoad = calculateLatentHeatLoad(indoorHumidity, outdoorHumidity, indoorTemp, outdoorTemp);
+            float totalHeatLoad = sensibleHeatLoad + latentHeatLoad;
+
             _heatLoadBTU = totalHeatLoad * Config::WATTS_TO_BTU_HR;
 
-            // Get base power calculation using shared method
-            float basePower = calculateBasePowerForCurrentConditions();
+            // Calculate COP
+            float tempDifference = abs(outdoorTemp - indoorTemp);
+            _currentCOP = calculateCOP(tempDifference, outdoorTemp);
 
-            // Calculate COP for display
-            _currentCOP = calculateCOP(conditions.tempDifference, conditions.outdoorTemp);
+            // Calculate base power consumption
+            float basePower = totalHeatLoad / _currentCOP;
+            basePower *= calculateEfficiencyFactor(tempDifference, outdoorHumidity);
+            basePower *= Config::AC_UNIT_EFFICIENCY_FACTOR;
 
             // Apply state-specific power multipliers
             switch (_acState) {
@@ -566,11 +572,10 @@ private:
         _disp.updateCurrentDraw(getCurrentDrawString());
         _disp.updateDailyEstimate(getDailyEstimateString());
         _disp.updateEnergyStatus(getEnergyStatusString());
-        _disp.updateEstimatedCurrentDraw(getEstimatedDrawString());
     }
 
     // Calculate Coefficient of Performance (COP) based on conditions
-    float calculateCOP(float tempDifference, float outdoorTemp) const {
+    float calculateCOP(float tempDifference, float outdoorTemp) {
         // COP decreases with larger temperature differences and higher outdoor temperatures
         // Carnot COP = T_cold / (T_hot - T_cold) - theoretical maximum
 
@@ -592,7 +597,7 @@ private:
     }
 
     // Calculate efficiency factor based on operating conditions
-    float calculateEfficiencyFactor(float tempDifference, float outdoorHumidity) const {
+    float calculateEfficiencyFactor(float tempDifference, float outdoorHumidity) {
         float efficiencyFactor = 1.0;
 
         // High temperature difference reduces efficiency
@@ -606,63 +611,6 @@ private:
         }
 
         return efficiencyFactor;
-    }
-
-    // Calculate what the estimated power would be for current conditions (regardless of AC state)
-    float calculateEstimatedPowerForCurrentConditions() const {
-        return calculateBasePowerForCurrentConditions();
-    }
-
-    // Calculate base power consumption for current environmental conditions
-    float calculateBasePowerForCurrentConditions() const {
-        // Return 0 if we don't have valid sensor data
-        if (!_sensors.isDataValid() || isnan(_weather.getCurrentTemp()) || isnan(_weather.getCurrentHumidity())) {
-            return 0.0;
-        }
-
-        // Get current environmental conditions
-        auto conditions = getCurrentEnvironmentalConditions();
-
-        // Calculate heat load
-        float sensibleHeatLoad = calculateSensibleHeatLoad(conditions.indoorTemp, conditions.outdoorTemp);
-        float latentHeatLoad = calculateLatentHeatLoad(conditions.indoorHumidity, conditions.outdoorHumidity,
-                                                       conditions.indoorTemp, conditions.outdoorTemp);
-        float totalHeatLoad = sensibleHeatLoad + latentHeatLoad;
-
-        // Calculate COP
-        float cop = calculateCOP(conditions.tempDifference, conditions.outdoorTemp);
-
-        // Calculate base power consumption
-        float basePower = totalHeatLoad / cop;
-        basePower *= calculateEfficiencyFactor(conditions.tempDifference, conditions.outdoorHumidity);
-        basePower *= Config::AC_UNIT_EFFICIENCY_FACTOR;
-
-        // Ensure reasonable bounds
-        return constrain(basePower, 0.0, Config::AC_MAX_POWER_WATTS);
-    }
-
-    // Structure to hold environmental conditions
-    struct EnvironmentalConditions {
-        float indoorTemp;
-        float outdoorTemp;
-        float indoorHumidity;
-        float outdoorHumidity;
-        float tempDifference;
-    };
-
-    // Get current environmental conditions in a structured way
-    EnvironmentalConditions getCurrentEnvironmentalConditions() const {
-        EnvironmentalConditions conditions = {0};
-
-        if (_sensors.isDataValid() && !isnan(_weather.getCurrentTemp()) && !isnan(_weather.getCurrentHumidity())) {
-            conditions.indoorTemp = _sensors.getIndoorTemp();
-            conditions.outdoorTemp = _weather.getCurrentTemp();
-            conditions.indoorHumidity = _sensors.getIndoorHumidity();
-            conditions.outdoorHumidity = _weather.getCurrentHumidity();
-            conditions.tempDifference = abs(conditions.outdoorTemp - conditions.indoorTemp);
-        }
-
-        return conditions;
     }
 
     DisplayManager &_disp;

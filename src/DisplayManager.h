@@ -148,9 +148,6 @@ public:
         updateTextElement("details.coDetails",
                           String("CO: ") + String(voltage, 2) + "V (ADC: " + String(analogReading) + ") (D: " + digitalState + ")");
     }
-    void updateEstimatedCurrentDraw(const String &value) {
-        updateTextElement("details.estCurrentDraw", value);
-    }
 
     /* -------- Heat Load page ------- */
     void updateHeatLoadTotal(const String &value) {
