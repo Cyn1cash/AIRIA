@@ -99,12 +99,6 @@ public:
     }
 
     // Check if specific alert types are active for sector status indicators
-    bool isOutdoorWeatherNormal() const {
-        // Outdoor weather is normal if no temperature difference alerts are active
-        return !isAlertActive(AlertType::TEMP_DIFFERENCE_HIGH) &&
-               !isAlertActive(AlertType::HUMIDITY_DIFFERENCE_HIGH);
-    }
-
     bool isIndoorConditionsNormal() const {
         // Indoor conditions are normal if temperature and humidity are within thresholds
         return !isAlertActive(AlertType::TEMP_HIGH) &&
@@ -214,7 +208,6 @@ private:
 
     void updateDisplay() {
         // Update status indicators based on current alert states
-        _disp.updateOutdoorIndicator(isOutdoorWeatherNormal());
         _disp.updateIndoorIndicator(isIndoorConditionsNormal());
         _disp.updateEnergyIndicator(isEnergyUsageNormal());
         _disp.updateAirQualityIndicator(isAirQualityNormal());

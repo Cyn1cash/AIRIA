@@ -61,10 +61,9 @@ public:
 
     void initializeStatusIndicators() {
         // Initialize all indicators to normal state (hide all warning indicators)
-        hide("warning");          // Outdoor weather
-        hide("indoorIndWarning"); // Indoor conditions
-        hide("energyIndWarning"); // Energy usage
-        hide("airIndWarning");    // Air quality
+        hide("indoorIndWarn"); // Indoor conditions
+        hide("energyIndWarn"); // Energy usage
+        hide("airIndWarn");    // Air quality
     }
     void updateClock(const char *hhmmss) {
         updateTextElement("time", hhmmss);
@@ -106,35 +105,27 @@ public:
     }
 
     /* -------- Status Indicators --------- */
-    void updateOutdoorIndicator(bool isNormal) {
-        if (isNormal) {
-            hide("warning"); // Hide frowny face for outdoor weather
-        } else {
-            show("warning"); // Show frowny face for outdoor weather
-        }
-    }
-
     void updateIndoorIndicator(bool isNormal) {
         if (isNormal) {
-            hide("indoorIndWarning"); // Hide frowny face for indoor conditions
+            hide("indoorIndWarn"); // Hide frowny face for indoor conditions
         } else {
-            show("indoorIndWarning"); // Show frowny face for indoor conditions
+            show("indoorIndWarn"); // Show frowny face for indoor conditions
         }
     }
 
     void updateEnergyIndicator(bool isNormal) {
         if (isNormal) {
-            hide("energyIndWarning"); // Hide frowny face for energy usage
+            hide("energyIndWarn"); // Hide frowny face for energy usage
         } else {
-            show("energyIndWarning"); // Show frowny face for energy usage
+            show("energyIndWarn"); // Show frowny face for energy usage
         }
     }
 
     void updateAirQualityIndicator(bool isNormal) {
         if (isNormal) {
-            hide("airIndWarning"); // Hide frowny face for air quality
+            hide("airIndWarn"); // Hide frowny face for air quality
         } else {
-            show("airIndWarning"); // Show frowny face for air quality
+            show("airIndWarn"); // Show frowny face for air quality
         }
     }
 
