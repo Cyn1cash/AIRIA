@@ -11,8 +11,7 @@ public:
         _disp.showDhtInitializing();
         _dht.begin();
 
-        // Initialize CO sensor pins
-        pinMode(Config::MQ9_DIGITAL_PIN, INPUT);
+        // Initialize CO sensor analog pin
         // A0 is analog input by default, no need to set pinMode
 
         // Initialize ozone sensor pin
@@ -41,11 +40,9 @@ public:
     uint16_t getCoAnalogReading() const { return _coAnalogReading; }
     float getCoVoltage() const { return _coVoltage; }
     float getCoPPM() const { return _coPPM; }
-    bool getCoDigitalReading() const { return _coDigitalReading; }
     bool getOzoneDigitalReading() const { return _ozoneDigitalReading; }
 
-    // Active-low corrected methods for alert checking
-    bool isCoDetected() const { return !_coDigitalReading; }       // Inverted for active-low
+    // Active-low corrected methods for alert checking (only for ozone now)
     bool isOzoneDetected() const { return !_ozoneDigitalReading; } // Inverted for active-low
 
     bool isCoSensorWarmedUp() const { return _coSensorWarmedUp; }
@@ -117,8 +114,8 @@ public:
             return "Status: Warming up";
         }
 
-        // Check both digital pin (for immediate detection) and PPM threshold (for alert consistency)
-        if (!_coDigitalReading || _coPPM > Config::CO_HIGH_THRESHOLD) { // Active-low: LOW = detected OR high PPM
+        // Check PPM threshold for alert consistency
+        if (_coPPM > Config::CO_HIGH_THRESHOLD) {
             return "Status: Detected";
         } else {
             return "Status: Safe";
@@ -160,7 +157,6 @@ private:
         // Read CO sensor data
         _coAnalogReading = analogRead(Config::MQ9_ANALOG_PIN);
         _coVoltage = (_coAnalogReading / 1023.0) * Config::MQ9_VOLTAGE_REF;
-        _coDigitalReading = digitalRead(Config::MQ9_DIGITAL_PIN);
 
         // Read ozone sensor data
         _ozoneDigitalReading = digitalRead(Config::MQ131_DIGITAL_PIN);
@@ -218,7 +214,7 @@ private:
         _disp.updateOzoneStatus(getOzoneStatusString());
 
         // Update details page with raw CO sensor data
-        _disp.updateCoDetails(_coVoltage, _coAnalogReading, _coDigitalReading);
+        _disp.updateCoDetails(_coVoltage, _coAnalogReading);
 
         // DHT22 readings logged
     }
@@ -241,7 +237,6 @@ private:
     uint16_t _coAnalogReading = 0;
     float _coVoltage = 0.0;
     float _coPPM = 0.0;
-    bool _coDigitalReading = false;
 
     // Ozone sensor variables
     uint32_t _ozoneSensorStartTime = 0;

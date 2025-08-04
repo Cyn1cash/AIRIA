@@ -105,7 +105,6 @@ private:
             doc["co_analog_reading"] = _sensors.getCoAnalogReading();
             doc["co_voltage"] = _sensors.getCoVoltage();
             doc["co_ppm"] = _sensors.getCoPPM();
-            doc["co_digital_reading"] = _sensors.getCoDigitalReading();
             doc["co_sensor_warmed_up"] = _sensors.isCoSensorWarmedUp();
             doc["ozone_digital_reading"] = _sensors.getOzoneDigitalReading();
             doc["ozone_sensor_warmed_up"] = _sensors.isOzoneSensorWarmedUp();
@@ -185,7 +184,6 @@ private:
         doc["co_analog_reading"] = _sensors.getCoAnalogReading();
         doc["co_voltage"] = _sensors.getCoVoltage();
         doc["co_ppm"] = _sensors.getCoPPM();
-        doc["co_digital_reading"] = _sensors.getCoDigitalReading();
         doc["co_sensor_warmed_up"] = _sensors.isCoSensorWarmedUp();
 
         // Ozone sensor data

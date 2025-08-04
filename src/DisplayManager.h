@@ -134,10 +134,9 @@ public:
         updateTextElement("details.latitude", String("Latitude: ") + String(lat, 15));
         updateTextElement("details.longitude", String("Longitude: ") + String(lon, 15));
     }
-    void updateCoDetails(float voltage, uint16_t analogReading, bool digitalReading) {
-        String digitalState = digitalReading ? "HIGH" : "LOW";
+    void updateCoDetails(float voltage, uint16_t analogReading) {
         updateTextElement("details.coDetails",
-                          String("CO: ") + String(voltage, 2) + "V (ADC: " + String(analogReading) + ") (D: " + digitalState + ")");
+                          String("CO: ") + String(voltage, 2) + "V (ADC: " + String(analogReading) + ")");
     }
 
     /* -------- Heat Load page ------- */

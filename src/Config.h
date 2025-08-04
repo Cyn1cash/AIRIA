@@ -49,7 +49,6 @@ namespace Config {
     /* Sensors --------------------------------------------------- */
     constexpr uint8_t DHT22_PIN = 5;              // GPIO 5 (D1 on NodeMCU)
     constexpr uint8_t MQ9_ANALOG_PIN = A0;        // Analog pin for MQ-9 CO sensor
-    constexpr uint8_t MQ9_DIGITAL_PIN = 14;       // GPIO 14 (D5 on NodeMCU) for MQ-9 digital output
     constexpr uint8_t MQ131_DIGITAL_PIN = 4;      // GPIO 4 (D2 on NodeMCU) for MQ-131 ozone sensor
     constexpr uint32_t SENSOR_REFRESH_MS = 5'000; // Read sensors every 5 seconds
     constexpr uint8_t MAX_SENSOR_FAILURES = 5;    // Max consecutive failed readings before reinit

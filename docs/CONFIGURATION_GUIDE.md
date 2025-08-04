@@ -36,7 +36,6 @@ constexpr float ELECTRICITY_RATE_PER_KWH = 0.25;  // Your local rate
 // Sensor pins (adjust if using different GPIO pins)
 constexpr uint8_t DHT22_PIN = 5;              // GPIO 5 (D1 on NodeMCU)
 constexpr uint8_t MQ9_ANALOG_PIN = A0;        // Analog pin for MQ-9 CO sensor
-constexpr uint8_t MQ9_DIGITAL_PIN = 14;       // GPIO 14 (D5 on NodeMCU)
 constexpr uint8_t MQ131_DIGITAL_PIN = 4;      // GPIO 4 (D2 on NodeMCU) for ozone sensor
 constexpr uint8_t BUZZER_PIN = 12;            // GPIO 12 (D6 on NodeMCU) for alert buzzer
 ```
@@ -124,7 +123,6 @@ MQ-9 CO Sensor:
 - VCC → 5V (if available) or 3.3V
 - GND → GND
 - Analog → A0
-- Digital → GPIO 14 (D5)
 
 MQ-131 Ozone Sensor:
 - VCC → 3.3V
@@ -216,6 +214,6 @@ Adjust thresholds in `Config.h` based on your specific needs:
 
 ### Gas Sensor Issues?
 
-- **MQ-9 (CO sensor)**: Allow 20-second warmup time, check analog reading on A0
+- **MQ-9 (CO sensor)**: Allow 20-second warmup time, uses only analog reading on A0 for accurate PPM measurement
 - **MQ-131 (Ozone sensor)**: Allow 30-second warmup time, digital reading on GPIO 4
 - **Inaccurate readings**: Sensors may need calibration in clean air environment
